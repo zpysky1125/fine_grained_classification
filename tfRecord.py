@@ -51,7 +51,7 @@ def create_record(image_names, imgae_labels, out_name):
 
 
 def read_and_decode(filename):
-    filename_queue = tf.train.string_input_producer([filename], num_epochs=10)
+    filename_queue = tf.train.string_input_producer([filename])
 
     reader = tf.TFRecordReader()
     _, serialized_example = reader.read(filename_queue)
@@ -74,15 +74,15 @@ if __name__ == '__main__':
                                                                                         train_valid_labels,
                                                                                         test_size=0.15,
                                                                                         shuffle=True)
-    create_record(train_image_names, train_labels, "train.tfrecords")
-    create_record(valid_image_names, valid_labels, "valid.tfrecords")
-    create_record(test_image_names, test_labels, "test.tfrecords")
+    # create_record(train_image_names, train_labels, "train.tfrecords")
+    # create_record(valid_image_names, valid_labels, "valid.tfrecords")
+    # create_record(test_image_names, test_labels, "test.tfrecords")
 
     # for j in range(3):
     #     img, label = read_and_decode("train.tfrecords")
     #     img_batch, label_batch = tf.train.shuffle_batch([img, label],
-    #                                                     batch_size=3, capacity=2000,
-    #                                                     min_after_dequeue=1000)
+    #                                                     batch_size=3, capacity=200,
+    #                                                     min_after_dequeue=10)
     #     init = tf.initialize_all_variables()
     #     with tf.Session() as sess:
     #         sess.run(init)
@@ -91,5 +91,6 @@ if __name__ == '__main__':
     #
     #         for i in range(2):
     #             example, l = sess.run([img_batch, label_batch])
+    #             print l
     #         coord.request_stop()
     #         coord.join(threads)
