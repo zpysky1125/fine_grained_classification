@@ -51,7 +51,7 @@ def create_record(image_names, imgae_labels, out_name):
 
 
 def read_and_decode(filename):
-    filename_queue = tf.train.string_input_producer([filename])
+    filename_queue = tf.train.string_input_producer([filename], num_epochs=10)
 
     reader = tf.TFRecordReader()
     _, serialized_example = reader.read(filename_queue)

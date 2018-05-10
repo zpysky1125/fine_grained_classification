@@ -30,12 +30,12 @@ start = time.time()
 for epoch in range(100):
 
     img, label = read_and_decode("train.tfrecords")
-    next_images, next_labels = tf.train.shuffle_batch([img, label], batch_size=batch_size, capacity=2000,
-                                                      min_after_dequeue=1000)
+    next_images, next_labels = tf.train.shuffle_batch([img, label], batch_size=batch_size, capacity=30000,
+                                                      min_after_dequeue=10000)
     valid_img, valid_label = read_and_decode("valid.tfrecords")
     next_valid_img, next_valid_label = tf.train.shuffle_batch([valid_img, valid_label], batch_size=valid_batch_size,
-                                                              capacity=2000,
-                                                              min_after_dequeue=1000)
+                                                              capacity=30000,
+                                                              min_after_dequeue=10000)
 
     with tf.Session() as sess:
         print "Initialize Variables"
@@ -46,11 +46,10 @@ for epoch in range(100):
         valid_batch = int(valid_image_num / valid_batch_size)
         for i in range(train_batch):
             batch_images, batch_labels = sess.run([next_images, next_labels])
-            print batch_labels
             _, batch_loss = sess.run([train, loss],
                                      feed_dict={images: batch_images, labels: batch_labels, train_mode: True})
             if i % 20 == 0:
-                print ("VGG fine-tuning for {} batches in % seconds: {}".format(i * 20, time.time() - start))
+                print ("VGG fine-tuning for {} batches in {} seconds".format(i * 20, time.time() - start))
                 print ("Epoch: {} step: {} loss: {}".format(epoch + 1, i, batch_loss))
                 print ("Training Accuracy: {}".format(
                     accuracy.eval(feed_dict={images: batch_images, labels: batch_labels, train_mode: True})))
@@ -59,7 +58,6 @@ for epoch in range(100):
         valid_corrent_num = 0
         for i in range(valid_batch):
             batch_images, batch_labels = sess.run([next_valid_img, next_valid_label])
-            print batch_labels
             valid_batch_correct_num, valid_batch_loss = sess.run([num_correct_preds, loss],
                                                                  feed_dict={images: batch_images, labels: batch_labels,
                                                                             train_mode: True})
