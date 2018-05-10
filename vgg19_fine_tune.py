@@ -27,50 +27,50 @@ num_correct_preds = tf.reduce_sum(tf.cast(correct_prediction, tf.float32))
 
 start = time.time()
 
-with tf.device('/gpu:1'):
-    for epoch in range(100):
 
-        train_img, train_label = read_and_decode("train.tfrecords")
-        print train_img, train_label
-        next_images, next_labels = tf.train.shuffle_batch([train_img, train_label], batch_size=batch_size, capacity=30000,
-                                                          min_after_dequeue=5094)
-        # valid_img, valid_label = read_and_decode("valid.tfrecords")
-        # next_valid_img, next_valid_label = tf.train.shuffle_batch([valid_img, valid_label], batch_size=valid_batch_size,
-        #                                                           capacity=30000,
-        #                                                           min_after_dequeue=900)
+for epoch in range(100):
 
-        with tf.Session() as sess:
-            print "Initialize Variables"
-            sess.run(tf.local_variables_initializer())
-            sess.run(tf.global_variables_initializer())
-            coord = tf.train.Coordinator()
-            threads = tf.train.start_queue_runners(sess=sess, coord=coord)
-            train_batch = int(train_image_num / batch_size)
-            valid_batch = int(valid_image_num / valid_batch_size)
-            for i in range(train_batch):
-                batch_images, batch_labels = sess.run([next_images, next_labels])
-                _, batch_loss = sess.run([train, loss],
-                                         feed_dict={images: batch_images, labels: batch_labels, train_mode: True})
-                if i % 20 == 0:
-                    print ("VGG fine-tuning for {} batches in {} seconds".format(i, time.time() - start))
-                    print ("Epoch: {} step: {} loss: {}".format(epoch + 1, i, batch_loss))
-                    print ("Training Accuracy: {}".format(
-                        accuracy.eval(feed_dict={images: batch_images, labels: batch_labels, train_mode: True})))
+    train_img, train_label = read_and_decode("train.tfrecords")
+    print train_img, train_label
+    next_images, next_labels = tf.train.shuffle_batch([train_img, train_label], batch_size=batch_size, capacity=30000,
+                                                      min_after_dequeue=5094)
+    # valid_img, valid_label = read_and_decode("valid.tfrecords")
+    # next_valid_img, next_valid_label = tf.train.shuffle_batch([valid_img, valid_label], batch_size=valid_batch_size,
+    #                                                           capacity=30000,
+    #                                                           min_after_dequeue=900)
 
-            # valid_loss = 0.0
-            # valid_corrent_num = 0
-            # for i in range(valid_batch):
-            #     batch_images, batch_labels = sess.run([next_valid_img, next_valid_label])
-            #     valid_batch_correct_num, valid_batch_loss = sess.run([num_correct_preds, loss],
-            #                                                          feed_dict={images: batch_images, labels: batch_labels,
-            #                                                                     train_mode: True})
-            #     valid_loss += valid_batch_loss
-            #     valid_corrent_num += valid_batch_correct_num
-            # print("Epoch: {}".format(epoch))
-            # print("Validation Loss: {}".format(valid_loss))
-            # print("Correct_val_count: {}  Total_val_count: {}".format(valid_corrent_num, valid_image_num))
-            # print("Validation Data Accuracy: {}".format(
-            #     100.0 * valid_corrent_num / (1.0 * valid_image_num)))  # for _ in range(100):
+    with tf.Session() as sess:
+        print "Initialize Variables"
+        sess.run(tf.local_variables_initializer())
+        sess.run(tf.global_variables_initializer())
+        coord = tf.train.Coordinator()
+        threads = tf.train.start_queue_runners(sess=sess, coord=coord)
+        train_batch = int(train_image_num / batch_size)
+        valid_batch = int(valid_image_num / valid_batch_size)
+        for i in range(train_batch):
+            batch_images, batch_labels = sess.run([next_images, next_labels])
+            _, batch_loss = sess.run([train, loss],
+                                     feed_dict={images: batch_images, labels: batch_labels, train_mode: True})
+            if i % 20 == 0:
+                print ("VGG fine-tuning for {} batches in {} seconds".format(i, time.time() - start))
+                print ("Epoch: {} step: {} loss: {}".format(epoch + 1, i, batch_loss))
+                print ("Training Accuracy: {}".format(
+                    accuracy.eval(feed_dict={images: batch_images, labels: batch_labels, train_mode: True})))
 
-            coord.request_stop()
-            coord.join(threads)
+        # valid_loss = 0.0
+        # valid_corrent_num = 0
+        # for i in range(valid_batch):
+        #     batch_images, batch_labels = sess.run([next_valid_img, next_valid_label])
+        #     valid_batch_correct_num, valid_batch_loss = sess.run([num_correct_preds, loss],
+        #                                                          feed_dict={images: batch_images, labels: batch_labels,
+        #                                                                     train_mode: True})
+        #     valid_loss += valid_batch_loss
+        #     valid_corrent_num += valid_batch_correct_num
+        # print("Epoch: {}".format(epoch))
+        # print("Validation Loss: {}".format(valid_loss))
+        # print("Correct_val_count: {}  Total_val_count: {}".format(valid_corrent_num, valid_image_num))
+        # print("Validation Data Accuracy: {}".format(
+        #     100.0 * valid_corrent_num / (1.0 * valid_image_num)))  # for _ in range(100):
+
+        coord.request_stop()
+        coord.join(threads)
