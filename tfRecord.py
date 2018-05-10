@@ -74,7 +74,7 @@ if __name__ == '__main__':
                                                                                         train_valid_labels,
                                                                                         test_size=0.15,
                                                                                         shuffle=True)
-    # create_record(train_image_names, train_labels, "train.tfrecords")
+    create_record(train_image_names, train_labels, "tt.tfrecords")
     # create_record(valid_image_names, valid_labels, "valid.tfrecords")
     # create_record(test_image_names, test_labels, "test.tfrecords")
 
