@@ -29,7 +29,7 @@ class Vgg19:
 
         start_time = time.time()
         print("build model started")
-        rgb_scaled = rgb
+        rgb_scaled = rgb * 255.0
 
         # Convert RGB to BGR
         red, green, blue = tf.split(axis=3, num_or_size_splits=3, value=rgb_scaled)
