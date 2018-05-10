@@ -29,7 +29,7 @@ class Vgg19:
         :param train_mode: a bool tensor, usually a placeholder: if True, dropout will be turned on
         """
 
-        rgb_scaled = rgb * 255.0
+        rgb_scaled = rgb
 
         # Convert RGB to BGR
         red, green, blue = tf.split(axis=3, num_or_size_splits=3, value=rgb_scaled)

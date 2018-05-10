@@ -30,9 +30,9 @@ def generate_test_valid_train_set():
         for l in f.readlines():
             l = l.strip('\n').split(' ')
             if dict_train_test_split[l[0]] == 0:
-                test_labels.append(int(l[1]))
+                test_labels.append(int(l[1])-1)
             else:
-                train_valid_labels.append(int(l[1]))
+                train_valid_labels.append(int(l[1])-1)
 
 
 def create_record(image_names, imgae_labels, out_name):
