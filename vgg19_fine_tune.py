@@ -21,7 +21,7 @@ vgg.build(images, train_mode)
 loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(labels=labels, logits=vgg.fc8))
 train = tf.train.GradientDescentOptimizer(0.0001).minimize(loss)
 
-correct_prediction = tf.equal(tf.cast(tf.argmax(vgg.fc8, 1), tf.int32), labels)
+correct_prediction = tf.equal(tf.argmax(vgg.fc8, 1), labels)
 accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 num_correct_preds = tf.reduce_sum(tf.cast(correct_prediction, tf.float32))
 
@@ -32,8 +32,8 @@ for epoch in range(100):
 
     train_img, train_label = read_and_decode("train.tfrecords")
     print train_img, train_label
-    next_images, next_labels = tf.train.shuffle_batch([train_img, train_label], batch_size=batch_size, capacity=10000+3*batch_size,
-                                                      min_after_dequeue=10000)
+    next_images, next_labels = tf.train.shuffle_batch([train_img, train_label], batch_size=batch_size, capacity=train_image_num*0.4+3*batch_size,
+                                                      min_after_dequeue=train_image_num*0.4)
     # next_images, next_labels = tf.train.batch([train_img, train_label], batch_size=batch_size)
     # valid_img, valid_label = read_and_decode("valid.tfrecords")
     # next_valid_img, next_valid_label = tf.train.shuffle_batch([valid_img, valid_label], batch_size=valid_batch_size,

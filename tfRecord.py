@@ -39,6 +39,7 @@ def create_record(image_names, imgae_labels, out_name):
     writer = tf.python_io.TFRecordWriter(out_name)
     for index, name in enumerate(image_names):
         img_path = name
+        tf.image.decode_jpeg()
         img = Image.open(img_path)
         img = img.resize((224, 224))
         img_raw = img.tobytes()
@@ -59,10 +60,12 @@ def read_and_decode(filename):
         'label': tf.FixedLenFeature([], tf.int64),
         'img_raw': tf.FixedLenFeature([], tf.string),
     })
-    img = tf.decode_raw(features['img_raw'], tf.uint8)
-    img = tf.reshape(img, [224, 224, 3])
-    img = tf.cast(img, tf.float32) * (1. / 255.0)
-    label = tf.cast(features['label'], tf.int32)
+    # img = tf.decode_raw(features['img_raw'], tf.uint8)
+    # img = tf.reshape(img, [224, 224, 3])
+    # img = tf.cast(img, tf.float32) * (1. / 255.0)
+    img = tf.image.decode_jpeg(features['img_raw'], channels=3)
+    img = tf.image.resize_image_with_crop_or_pad(img, 224, 224)
+    label = tf.cast(features['label'], tf.int64)
     print img, label
 
     return img, label
