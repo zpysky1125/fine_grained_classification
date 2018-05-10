@@ -27,15 +27,16 @@ num_correct_preds = tf.reduce_sum(tf.cast(correct_prediction, tf.float32))
 
 start = time.time()
 
+
 for epoch in range(100):
 
-    img, label = read_and_decode("train.tfrecords")
-    next_images, next_labels = tf.train.shuffle_batch([img, label], batch_size=batch_size, capacity=30000,
-                                                      min_after_dequeue=10000)
+    train_img, train_label = read_and_decode("train.tfrecords")
+    next_images, next_labels = tf.train.shuffle_batch([train_img, train_label], batch_size=batch_size, capacity=30000,
+                                                      min_after_dequeue=5094)
     valid_img, valid_label = read_and_decode("valid.tfrecords")
     next_valid_img, next_valid_label = tf.train.shuffle_batch([valid_img, valid_label], batch_size=valid_batch_size,
                                                               capacity=30000,
-                                                              min_after_dequeue=10000)
+                                                              min_after_dequeue=900)
 
     with tf.Session() as sess:
         print "Initialize Variables"
