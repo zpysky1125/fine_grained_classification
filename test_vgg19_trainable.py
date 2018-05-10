@@ -18,7 +18,7 @@ with tf.device('/cpu:0'):
 
     images = tf.placeholder(tf.float32, [1, 224, 224, 3])
     # true_out = tf.placeholder(tf.float32, [1, 1000])
-    true_out = tf.placeholder(tf.float32, [1, 100])
+    true_out = tf.placeholder(tf.float32, [1, 200])
     train_mode = tf.placeholder(tf.bool)
 
     vgg = vgg19.Vgg19('./vgg19.npy')
