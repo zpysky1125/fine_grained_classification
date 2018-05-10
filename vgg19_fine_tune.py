@@ -32,7 +32,7 @@ for epoch in range(100):
 
     train_img, train_label = read_and_decode("train.tfrecords")
     print train_img, train_label
-    next_images, next_labels = tf.train.shuffle_batch([train_img, train_label], batch_size=batch_size, capacity=500+3*batch_size,
+    next_images, next_labels = tf.train.shuffle_batch([train_img, train_label], batch_size=batch_size, capacity=10000+3*batch_size,
                                                       min_after_dequeue=10000)
     # next_images, next_labels = tf.train.batch([train_img, train_label], batch_size=batch_size)
     # valid_img, valid_label = read_and_decode("valid.tfrecords")
@@ -63,6 +63,7 @@ for epoch in range(100):
         valid_batch = int(valid_image_num / valid_batch_size)
         for i in range(train_batch):
             batch_images, batch_labels = sess.run([next_images, next_labels])
+            print type(batch_images)
             print i
             print batch_labels
             # _, batch_loss = sess.run([train, loss],
