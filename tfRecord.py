@@ -63,6 +63,7 @@ def read_and_decode(filename):
     img = tf.reshape(img, [224, 224, 3])
     img = tf.cast(img, tf.float32) * (1. / 255.0)
     label = tf.cast(features['label'], tf.int32)
+    print img, label
 
     return img, label
 
