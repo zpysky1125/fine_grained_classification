@@ -49,6 +49,7 @@ for epoch in range(100):
         valid_batch = int(valid_image_num / valid_batch_size)
         for i in range(train_batch):
             batch_images, batch_labels = sess.run([next_images, next_labels])
+            print batch_images, batch_labels
             _, batch_loss = sess.run([train, loss],
                                      feed_dict={images: batch_images, labels: batch_labels, train_mode: True})
             if i % 20 == 0:
