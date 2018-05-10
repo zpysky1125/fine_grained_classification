@@ -12,7 +12,7 @@ train_image_num = 5094
 valid_image_num = 900
 
 images = tf.placeholder(tf.float32, [batch_size, 224, 224, 3])
-labels = tf.placeholder(tf.int32, [batch_size])
+labels = tf.placeholder(tf.int64, [batch_size])
 train_mode = tf.placeholder(tf.bool)
 
 vgg = vgg19.Vgg19('./vgg19.npy')
