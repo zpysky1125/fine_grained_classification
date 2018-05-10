@@ -46,26 +46,31 @@ for epoch in range(100):
         sess.run(tf.global_variables_initializer())
         coord = tf.train.Coordinator()
         threads = tf.train.start_queue_runners(sess=sess, coord=coord)
-        # try:
-        #     while not coord.should_stop():
-        #         # Run training steps or whatever
-        #         batch_images, batch_labels = sess.run([next_images, next_labels])
-        #
-        # except tf.errors.OutOfRangeError:
-        #     print('Done training -- epoch limit reached')
-        # finally:
-        #     # When done, ask the threads to stop.
-        #     coord.request_stop()
+        ind = 0
+        try:
+            while not coord.should_stop():
+                # Run training steps or whatever
+                batch_images, batch_labels = sess.run([next_images, next_labels])
+                print batch_images.shape, batch_labels.shape
+                print ind
+                ind += 1
+                print batch_labels
+
+        except tf.errors.OutOfRangeError:
+            print('Done training -- epoch limit reached')
+        finally:
+            # When done, ask the threads to stop.
+            coord.request_stop()
 
 
 
-        train_batch = int(train_image_num / batch_size)
-        valid_batch = int(valid_image_num / valid_batch_size)
-        for i in range(train_batch):
-            batch_images, batch_labels = sess.run([next_images, next_labels])
-            print batch_images.shape, batch_labels.shape
-            print i
-            print batch_labels
+        # train_batch = int(train_image_num / batch_size)
+        # valid_batch = int(valid_image_num / valid_batch_size)
+        # for i in range(train_batch):
+        #     batch_images, batch_labels = sess.run([next_images, next_labels])
+        #     print batch_images.shape, batch_labels.shape
+        #     print i
+        #     print batch_labels
             # _, batch_loss = sess.run([train, loss],
             #                          feed_dict={images: batch_images, labels: batch_labels, train_mode: True})
             # if i % 20 == 0:
