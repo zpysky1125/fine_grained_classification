@@ -92,7 +92,6 @@ def generate_test_valid_train_set():
             else:
                 train_valid_image_names.append(path + '/CUB_200_2011/CUB_200_2011/images/' + l[1])
 
-    print path + '/CUB_200_2011/CUB_200_2011/image_class_labels.txt'
     with open(path + '/CUB_200_2011/CUB_200_2011/image_class_labels.txt', 'r') as f:
         for l in f.readlines():
             print l
