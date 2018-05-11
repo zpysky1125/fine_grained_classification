@@ -1,5 +1,6 @@
 import time
 import sys
+import os
 import tensorflow as tf
 
 from vgg_network import vgg19_trainable as vgg19
@@ -22,7 +23,7 @@ images = tf.placeholder(tf.float32, [None, 224, 224, 3])
 labels = tf.placeholder(tf.int64, [None])
 train_mode = tf.placeholder(tf.bool)
 
-vgg = vgg19.Vgg19('./vgg_network/vgg19.npy')
+vgg = vgg19.Vgg19(os.getcwd() + "/vgg_network/vgg19.npy")
 vgg.build(images, train_mode)
 
 loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(labels=labels, logits=vgg.fc8))
