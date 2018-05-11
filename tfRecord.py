@@ -209,8 +209,8 @@ if __name__ == '__main__':
     train = tf.train.AdagradOptimizer(0.0001).minimize(loss)
 
     correct_prediction = tf.equal(tf.argmax(vgg.fc8, 1), labels)
-    accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
-    num_correct_preds = tf.reduce_sum(tf.cast(correct_prediction, tf.float32))
+    # accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
+    # num_correct_preds = tf.reduce_sum(tf.cast(correct_prediction, tf.float32))
 
     start = time.time()
 
@@ -237,8 +237,8 @@ if __name__ == '__main__':
                     _, batch_loss = sess.run([train, loss],
                                              feed_dict={images: train_image, labels: train_label, train_mode: True})
                     print ("Epoch: {} step: {} loss: {} time: {} seconds".format(i, j, batch_loss, time.time() - start))
-                    print ("Training Accuracy: {}".format(
-                        accuracy.eval(feed_dict={images: train_image, labels: train_label, train_mode: True})))
+                    # print ("Training Accuracy: {}".format(
+                    #     accuracy.eval(feed_dict={images: train_image, labels: train_label, train_mode: True})))
 
                 train_loss = 0.0
                 train_correct_num = 0
