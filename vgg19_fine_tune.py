@@ -1,20 +1,15 @@
 import tensorflow as tf
 import vgg19_trainable as vgg19
 import time
-from tfRecord import read_and_decode
 from tfRecord import get_batch
 
-train_batch_size = 64
-valid_batch_size = 64
-valid_loss = 0.0
-valid_corrent_num = 0
-valid_num = 900
 train_image_num = 5094
 valid_image_num = 900
 test_image_num = 5794
-test_batch_size = 5794
+train_batch_size = 64
+valid_batch_size = 64
+test_batch_size = 64
 train_epoches = 20
-valid_epoches = 40
 
 images = tf.placeholder(tf.float32, [None, 224, 224, 3])
 labels = tf.placeholder(tf.int64, [None])
@@ -108,7 +103,8 @@ with tf.Session() as sess:
     try:
         train_batch = int(train_image_num / train_batch_size)
         valid_batch = int(valid_image_num / valid_batch_size)
-        for i in range(50):
+        test_batch = int(test_image_num / test_batch_size)
+        for i in range(100):
 
             if coord.should_stop():
                 break
@@ -116,8 +112,7 @@ with tf.Session() as sess:
                 train_image, train_label = sess.run([train_image_batch, train_label_batch])
                 _, batch_loss = sess.run([train, loss],
                                          feed_dict={images: train_image, labels: train_label, train_mode: True})
-                print ("VGG fine-tuning for {} batches in {} seconds".format(j, time.time() - start))
-                print ("step: {} loss: {}".format(j, batch_loss))
+                print ("Epoch: {} step: {} loss: {} time: {} seconds".format(i, j, batch_loss, time.time() - start))
                 print ("Training Accuracy: {}".format(
                     accuracy.eval(feed_dict={images: train_image, labels: train_label, train_mode: True})))
 
@@ -133,20 +128,32 @@ with tf.Session() as sess:
                 valid_loss += valid_batch_loss
                 valid_corrent_num += valid_batch_corrent_num
 
-            print("Validation Loss: {}".format(valid_loss))
-            print("Correct_val_count: {}  Total_val_count: {}".format(valid_corrent_num, valid_image_num))
-            print("Validation Data Accuracy: {}".format(100.0 * valid_corrent_num / (1.0 * valid_image_num)))
+            print ()
+            print ("Epoch: {}", i)
+            print ("Validation Loss: {}".format(valid_loss))
+            print ("Correct_val_count: {}  Total_val_count: {}".format(valid_corrent_num, valid_image_num))
+            print ("Validation Data Accuracy: {}".format(100.0 * valid_corrent_num / (1.0 * valid_image_num)))
+            print ()
 
-            # if i % 20 == 0:
-            #     test_image, test_label = sess.run([test_image_batch, test_label_batch])
-            #
-            #     test_corrent_num, test_loss = sess.run([num_correct_preds, loss],
-            #                                            feed_dict={images: test_image,
-            #                                                       labels: test_label,
-            #                                                       train_mode: True})
-            #     print("Test Loss: {}".format(test_loss))
-            #     print("Correct_test_count: {}  Total_test_count: {}".format(test_corrent_num, test_image_num))
-            #     print("Test Data Accuracy: {}".format(100.0 * test_corrent_num / (1.0 * test_image_num)))
+            if (i+1) % 20 == 0:
+                test_loss = 0.0
+                test_correct_num = 0
+                for j in range(test_batch + 1):
+                    test_image, test_label = sess.run([test_image_batch, test_label_batch])
+                    test_batch_correct_num, test_batch_loss = sess.run([num_correct_preds, loss],
+                                                                       feed_dict={images: test_image,
+                                                                                  labels: test_label,
+                                                                                  train_mode: True})
+                    test_loss += test_batch_loss
+                    test_correct_num += test_batch_correct_num
+
+                print ()
+                print ("Epoch: {}", i)
+                print("Test Loss: {}".format(test_loss))
+                print("Correct_test_count: {}  Total_test_count: {}".format(test_correct_num, test_image_num))
+                print("Test Data Accuracy: {}".format(100.0 * test_correct_num / (1.0 * test_image_num)))
+                print ()
+
     except tf.errors.OutOfRangeError:
         print('Done!')
     finally:
