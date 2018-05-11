@@ -95,22 +95,23 @@ test_image_batch, test_label_batch = get_batch("test.tfrecords", test_batch_size
 
 with tf.Session() as sess:
     print "Initialize Variables"
-    coord = tf.train.Coordinator()
-    threads = tf.train.start_queue_runners(sess=sess, coord=coord)
     sess.run(tf.local_variables_initializer())
     sess.run(tf.global_variables_initializer())
+    coord = tf.train.Coordinator()
+    threads = tf.train.start_queue_runners(sess=sess, coord=coord)
     try:
         train_batch = int(train_image_num / train_batch_size)
         valid_batch = int(valid_image_num / valid_batch_size)
         test_batch = int(test_image_num / test_batch_size)
         for i in range(100):
-
+            print "haha"
             if coord.should_stop():
                 break
             for j in range(train_batch + 1):
                 train_image, train_label = sess.run([train_image_batch, train_label_batch])
                 _, batch_loss = sess.run([train, loss],
                                          feed_dict={images: train_image, labels: train_label, train_mode: True})
+                print "hehe"
                 print ("Epoch: {} step: {} loss: {} time: {} seconds".format(i, j, batch_loss, time.time() - start))
                 print ("Training Accuracy: {}".format(
                     accuracy.eval(feed_dict={images: train_image, labels: train_label, train_mode: True})))
