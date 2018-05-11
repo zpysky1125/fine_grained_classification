@@ -2,6 +2,7 @@ import os
 import tensorflow as tf
 from PIL import Image
 from sklearn.model_selection import train_test_split
+import vgg19_trainable as vgg19
 
 path = os.getcwd()
 
@@ -187,17 +188,26 @@ if __name__ == '__main__':
     # create_record(valid_image_names, valid_labels, "valid.tfrecords")
     # create_record(test_image_names, test_labels, "test.tfrecords")
 
-    img, label = read_and_decode("train.tfrecords")
-    img_batch, label_batch = tf.train.shuffle_batch([img, label],
-                                                    batch_size=20, capacity=100,
-                                                    min_after_dequeue=5)
+    img_batch, label_batch = get_batch("train.tfrecords", 30)
+    images = tf.placeholder(tf.float32, [None, 224, 224, 3])
+    labels = tf.placeholder(tf.int64, [None])
+    train_mode = tf.placeholder(tf.bool)
+
+    vgg = vgg19.Vgg19('./vgg19.npy')
+    vgg.build(images, train_mode)
+
+    loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(labels=labels, logits=vgg.fc8))
+
     sess.run(tf.local_variables_initializer())
     sess.run(tf.global_variables_initializer())
     coord = tf.train.Coordinator()
     threads = tf.train.start_queue_runners(sess=sess, coord=coord)
-    for i in range(2):
+    for i in range(10):
         example, l = sess.run([img_batch, label_batch])
+        batch_loss = sess.run([loss],
+                                 feed_dict={images: example, labels: l, train_mode: False})
         print l
         print type(example)
+        print batch_loss
     coord.request_stop()
     coord.join(threads)
