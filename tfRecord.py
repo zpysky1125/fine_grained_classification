@@ -178,11 +178,26 @@ def main(unused_argv):
 
 if __name__ == '__main__':
     # tf.app.run()
-    generate_test_valid_train_set()
-    train_image_names, valid_image_names, train_labels, valid_labels = train_test_split(train_valid_image_names,
-                                                                                        train_valid_labels,
-                                                                                        test_size=0.15,
-                                                                                        shuffle=True)
-    create_record(train_image_names, train_labels, "train.tfrecords")
-    create_record(valid_image_names, valid_labels, "valid.tfrecords")
-    create_record(test_image_names, test_labels, "test.tfrecords")
+    # generate_test_valid_train_set()
+    # train_image_names, valid_image_names, train_labels, valid_labels = train_test_split(train_valid_image_names,
+    #                                                                                     train_valid_labels,
+    #                                                                                     test_size=0.15,
+    #                                                                                     shuffle=True)
+    # create_record(train_image_names, train_labels, "train.tfrecords")
+    # create_record(valid_image_names, valid_labels, "valid.tfrecords")
+    # create_record(test_image_names, test_labels, "test.tfrecords")
+
+    img, label = read_and_decode("train.tfrecords")
+    img_batch, label_batch = tf.train.shuffle_batch([img, label],
+                                                    batch_size=20, capacity=100,
+                                                    min_after_dequeue=5)
+    sess.run(tf.local_variables_initializer())
+    sess.run(tf.global_variables_initializer())
+    coord = tf.train.Coordinator()
+    threads = tf.train.start_queue_runners(sess=sess, coord=coord)
+    for i in range(2):
+        example, l = sess.run([img_batch, label_batch])
+        print l
+        print type(example)
+    coord.request_stop()
+    coord.join(threads)

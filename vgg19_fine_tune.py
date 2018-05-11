@@ -93,7 +93,6 @@ test_image_batch, test_label_batch = get_batch("test.tfrecords", test_batch_size
 #     coord.join(threads)
 
 
-
 with tf.Session() as sess:
     print "Initialize Variables"
     coord = tf.train.Coordinator()
@@ -124,7 +123,7 @@ with tf.Session() as sess:
                 train_batch_correct_num, train_batch_loss = sess.run([num_correct_preds, loss],
                                                                      feed_dict={images: train_image,
                                                                                 labels: train_label,
-                                                                                train_mode: True})
+                                                                                train_mode: False})
                 train_loss += train_batch_loss
                 train_correct_num += train_batch_correct_num
 
@@ -143,7 +142,7 @@ with tf.Session() as sess:
                 valid_batch_correct_num, valid_batch_loss = sess.run([num_correct_preds, loss],
                                                                      feed_dict={images: valid_image,
                                                                                 labels: valid_label,
-                                                                                train_mode: True})
+                                                                                train_mode: False})
                 valid_loss += valid_batch_loss
                 valid_corrent_num += valid_batch_correct_num
 
@@ -154,10 +153,7 @@ with tf.Session() as sess:
             print ("Validation Data Accuracy: {}".format(100.0 * valid_corrent_num / (1.0 * valid_image_num)))
             print
 
-
-
-
-            if (i+1) % 20 == 0:
+            if (i + 1) % 20 == 0:
                 test_loss = 0.0
                 test_correct_num = 0
                 for j in range(test_batch + 1):
@@ -165,7 +161,7 @@ with tf.Session() as sess:
                     test_batch_correct_num, test_batch_loss = sess.run([num_correct_preds, loss],
                                                                        feed_dict={images: test_image,
                                                                                   labels: test_label,
-                                                                                  train_mode: True})
+                                                                                  train_mode: False})
                     test_loss += test_batch_loss
                     test_correct_num += test_batch_correct_num
 
