@@ -12,8 +12,7 @@ train_image_names, train_labels = [], []
 valid_image_names, valid_labels = [], []
 test_image_names, test_labels = [], []
 
-# sess = tf.Session()
-sess = None
+sess = tf.Session()
 
 
 def _int64_feature(value):
@@ -107,15 +106,15 @@ def create_record(image_names, image_labels, out_name):
     writer = tf.python_io.TFRecordWriter(out_name)
     for index, name in enumerate(image_names):
         img_path = name
-        img = Image.open(img_path)
-        img = img.resize((224, 224))
-        img_raw = img.tobytes()
-        example = tf.train.Example(features=tf.train.Features(feature={
-            'label': tf.train.Feature(int64_list=tf.train.Int64List(value=[image_labels[index]])),
-            'img_raw': tf.train.Feature(bytes_list=tf.train.BytesList(value=[img_raw]))
-        }))
-        # image_buffer, height, width = _process_image(img_path)
-        # example = _convert_to_example(image_buffer, image_labels[index], height, width)
+        # img = Image.open(img_path)
+        # img = img.resize((224, 224))
+        # img_raw = img.tobytes()
+        # example = tf.train.Example(features=tf.train.Features(feature={
+        #     'label': tf.train.Feature(int64_list=tf.train.Int64List(value=[image_labels[index]])),
+        #     'img_raw': tf.train.Feature(bytes_list=tf.train.BytesList(value=[img_raw]))
+        # }))
+        image_buffer, height, width = _process_image(img_path)
+        example = _convert_to_example(image_buffer, image_labels[index], height, width)
         writer.write(example.SerializeToString())
     writer.close()
 
@@ -125,24 +124,24 @@ def read_and_decode(filename):
 
     reader = tf.TFRecordReader()
     _, serialized_example = reader.read(filename_queue)
-    # features = tf.parse_single_example(serialized_example, features = {
-    #     "image/encoded": tf.FixedLenFeature([], tf.string),
-    #     "image/height": tf.FixedLenFeature([], tf.int64),
-    #     "image/width": tf.FixedLenFeature([], tf.int64),
-    #     "image/class/label": tf.FixedLenFeature([], tf.int64),})
-    # image_encoded = features["image/encoded"]
-    # image_raw = tf.image.decode_jpeg(image_encoded, channels=3)
-    # img = tf.image.resize_image_with_crop_or_pad(image_raw, 224, 224)
-    # label = tf.cast(features["image/class/label"], tf.int64)
+    features = tf.parse_single_example(serialized_example, features = {
+        "image/encoded": tf.FixedLenFeature([], tf.string),
+        "image/height": tf.FixedLenFeature([], tf.int64),
+        "image/width": tf.FixedLenFeature([], tf.int64),
+        "image/class/label": tf.FixedLenFeature([], tf.int64),})
+    image_encoded = features["image/encoded"]
+    image_raw = tf.image.decode_jpeg(image_encoded, channels=3)
+    img = tf.image.resize_image_with_crop_or_pad(image_raw, 224, 224)
+    label = tf.cast(features["image/class/label"], tf.int64)
 
-    features = tf.parse_single_example(serialized_example, features={
-        'label': tf.FixedLenFeature([], tf.int64),
-        'img_raw': tf.FixedLenFeature([], tf.string)
-    })
-    img = tf.decode_raw(features['img_raw'], tf.uint8)
-    img = tf.reshape(img, [224, 224, 3])
-    img = tf.cast(img, tf.float32) * (1. / 255.0) - 0.5
-    label = tf.cast(features['label'], tf.int64)
+    # features = tf.parse_single_example(serialized_example, features={
+    #     'label': tf.FixedLenFeature([], tf.int64),
+    #     'img_raw': tf.FixedLenFeature([], tf.string)
+    # })
+    # img = tf.decode_raw(features['img_raw'], tf.uint8)
+    # img = tf.reshape(img, [224, 224, 3])
+    # img = tf.cast(img, tf.float32) * (1. / 255.0) - 0.5
+    # label = tf.cast(features['label'], tf.int64)
     return img, label
 
 
@@ -179,7 +178,7 @@ def main(unused_argv):
 
 
 if __name__ == '__main__':
-    # tf.app.run()
+    tf.app.run()
     # generate_test_valid_train_set()
     # train_image_names, valid_image_names, train_labels, valid_labels = train_test_split(train_valid_image_names,
     #                                                                                     train_valid_labels,
@@ -189,47 +188,4 @@ if __name__ == '__main__':
     # create_record(valid_image_names, valid_labels, "valid.tfrecords")
     # create_record(test_image_names, test_labels, "test.tfrecords")
 
-    images = tf.placeholder(tf.float32, [None, 224, 224, 3])
-    labels = tf.placeholder(tf.int64, [None])
-    train_mode = tf.placeholder(tf.bool)
 
-    vgg = vgg19.Vgg19('./vgg19.npy')
-    vgg.build(images, train_mode)
-
-    loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(labels=labels, logits=vgg.fc8))
-    train = tf.train.AdagradOptimizer(0.0001).minimize(loss)
-
-    correct_prediction = tf.equal(tf.argmax(vgg.fc8, 1), labels)
-    accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
-    num_correct_preds = tf.reduce_sum(tf.cast(correct_prediction, tf.float32))
-
-    train_image_batch, train_label_batch = get_batch("train.tfrecords", 64)
-
-    # img_batch, label_batch = get_batch("train.tfrecords", 64)
-    # images = tf.placeholder(tf.float32, [None, 224, 224, 3])
-    # labels = tf.placeholder(tf.int64, [None])
-    # train_mode = tf.placeholder(tf.bool)
-    #
-    # vgg = vgg19.Vgg19('./vgg19.npy')
-    # vgg.build(images, train_mode)
-    #
-    # loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(labels=labels, logits=vgg.fc8))
-    # train = tf.train.AdagradOptimizer(0.0001).minimize(loss)
-
-    with tf.Session() as sess:
-
-        sess.run(tf.local_variables_initializer())
-        sess.run(tf.global_variables_initializer())
-        coord = tf.train.Coordinator()
-        threads = tf.train.start_queue_runners(sess=sess, coord=coord)
-        for i in range(50):
-            example, l = sess.run([train_image_batch, train_label_batch])
-            _, batch_loss = sess.run([train, loss],
-                                     feed_dict={images: example, labels: l, train_mode: True})
-            print l
-            print type(example)
-            print batch_loss
-            print ("Training Accuracy: {}".format(
-                accuracy.eval(feed_dict={images: example, labels: l, train_mode: True})))
-        coord.request_stop()
-        coord.join(threads)
