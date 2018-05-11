@@ -10,6 +10,8 @@ valid_corrent_num = 0
 valid_num = 900
 train_image_num = 5094
 valid_image_num = 900
+train_epoches = 20
+valid_epoches = 40
 
 images = tf.placeholder(tf.float32, [None, 224, 224, 3])
 labels = tf.placeholder(tf.int64, [None])
@@ -27,18 +29,24 @@ num_correct_preds = tf.reduce_sum(tf.cast(correct_prediction, tf.float32))
 
 start = time.time()
 
+valid_img, valid_label = [1]*valid_epoches, [1]*valid_epoches
+next_valid_img, next_valid_label = [1]*valid_epoches, [1]*valid_epoches
 
-train_img, train_label = read_and_decode("train.tfrecords", 20)
+
+train_img, train_label = read_and_decode("train.tfrecords", train_epoches)
 print train_img, train_label
 next_images, next_labels = tf.train.shuffle_batch([train_img, train_label], batch_size=batch_size, capacity=6000+3*batch_size,
                                                   min_after_dequeue=6000)
 # next_images, next_labels = tf.train.batch([train_img, train_label], batch_size=batch_size)
-valid_img, valid_label = read_and_decode("valid.tfrecords", 40)
+for i in range(valid_epoches):
+    valid_img[i], valid_label[i] = read_and_decode("valid.tfrecords", valid_epoches)
+    next_valid_img[i], next_valid_label[i] = tf.train.batch([valid_img[i], valid_label[i]], batch_size=valid_batch_size,
+                                                          capacity=900, allow_smaller_final_batch=True)
 # next_valid_img, next_valid_label = tf.train.shuffle_batch([valid_img, valid_label], batch_size=valid_batch_size,
 #                                                           capacity=250+3*valid_batch_size,
 #                                                           min_after_dequeue=250)
-next_valid_img, next_valid_label = tf.train.batch([valid_img, valid_label], batch_size=valid_batch_size,
-                                                          capacity=900)
+# next_valid_img, next_valid_label = tf.train.batch([valid_img, valid_label], batch_size=valid_batch_size,
+#                                                           capacity=900)
 
 with tf.Session() as sess:
     print "Initialize Variables"
@@ -60,10 +68,12 @@ with tf.Session() as sess:
                     accuracy.eval(feed_dict={images: batch_images, labels: batch_labels, train_mode: True})))
 
             if i % 200 == 0:
+                j = i/200
                 valid_loss = 0.0
                 valid_corrent_num = 0
-                for i in range(valid_batch):
-                    batch_images, batch_labels = sess.run([next_valid_img, next_valid_label])
+                for i in range(valid_batch+1):
+                    batch_images, batch_labels = sess.run([next_valid_img[j], next_valid_label[j]])
+                    print batch_labels
                     valid_batch_correct_num, valid_batch_loss = sess.run([num_correct_preds, loss],
                                                                          feed_dict={images: batch_images,
                                                                                     labels: batch_labels,
