@@ -26,16 +26,15 @@ vgg = vgg19.Vgg19('./vgg19.npy')
 vgg.build(images, train_mode)
 
 
-l1_regularizer = tf.contrib.layers.l1_regularizer(
-   scale=0.005, scope=None
-)
-
-weights = tf.trainable_variables()
-regularization_penalty = tf.contrib.layers.apply_regularization(l1_regularizer, weights)
+# l1_regularizer = tf.contrib.layers.l1_regularizer(
+#    scale=0.005, scope=None
+# )
+#
+# weights = tf.trainable_variables()
+# regularization_penalty = tf.contrib.layers.apply_regularization(l1_regularizer, weights)
 
 loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(labels=labels, logits=vgg.fc8))
-# train = tf.train.AdamOptimizer().minimize(loss)
-train = tf.train.AdagradOptimizer(0.0001).minimize(loss + regularization_penalty)
+train = tf.train.AdagradOptimizer(0.0001).minimize(loss)
 
 correct_prediction = tf.equal(tf.argmax(vgg.fc8, 1), labels)
 accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
@@ -131,7 +130,7 @@ with tf.Session() as sess:
                 train_image, train_label = sess.run([train_image_batch, train_label_batch])
                 _, batch_loss, acc = sess.run([train, loss, accuracy],
                                          feed_dict={images: train_image, labels: train_label, train_mode: True})
-                print ("Epoch: {} step: {} loss: {} accuracy: {} time: {} seconds".format(i, j, batch_loss, acc * 100.0, time.time() - start))
+                # print ("Epoch: {} step: {} loss: {} accuracy: {} time: {} seconds".format(i, j, batch_loss, acc * 100.0, time.time() - start))
 
             train_loss = 0.0
             train_correct_num = 0
