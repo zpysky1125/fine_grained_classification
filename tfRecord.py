@@ -190,13 +190,13 @@ if __name__ == '__main__':
     # create_record(valid_image_names, valid_labels, "valid.tfrecords")
     # create_record(test_image_names, test_labels, "test.tfrecords")
 
-    train_image_num = 5094
-    valid_image_num = 900
-    test_image_num = 5794
-    train_batch_size = 64
-    valid_batch_size = 64
-    test_batch_size = 64
-    train_epoches = 20
+    # train_image_num = 5094
+    # valid_image_num = 900
+    # test_image_num = 5794
+    # train_batch_size = 64
+    # valid_batch_size = 64
+    # test_batch_size = 64
+    # train_epoches = 20
 
     images = tf.placeholder(tf.float32, [None, 224, 224, 3])
     labels = tf.placeholder(tf.int64, [None])
@@ -214,7 +214,7 @@ if __name__ == '__main__':
 
     start = time.time()
 
-    train_image_batch, train_label_batch = get_batch("train.tfrecords", train_batch_size)
+    train_image_batch, train_label_batch = get_batch("train.tfrecords", 64)
     # valid_image_batch, valid_label_batch = get_batch("valid.tfrecords", valid_batch_size)
     # test_image_batch, test_label_batch = get_batch("test.tfrecords", test_batch_size)
 
@@ -225,14 +225,13 @@ if __name__ == '__main__':
         sess.run(tf.local_variables_initializer())
         sess.run(tf.global_variables_initializer())
         try:
-            train_batch = int(train_image_num / train_batch_size)
-            valid_batch = int(valid_image_num / valid_batch_size)
-            test_batch = int(test_image_num / test_batch_size)
-            for i in range(100):
-
+            # train_batch = int(train_image_num / train_batch_size)
+            # valid_batch = int(valid_image_num / valid_batch_size)
+            # test_batch = int(test_image_num / test_batch_size)
+            for i in range(5):
                 if coord.should_stop():
                     break
-                for j in range(train_batch + 1):
+                for j in range(30):
                     train_image, train_label = sess.run([train_image_batch, train_label_batch])
                     _, batch_loss = sess.run([train, loss],
                                              feed_dict={images: train_image, labels: train_label, train_mode: True})
