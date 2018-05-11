@@ -12,7 +12,8 @@ train_image_names, train_labels = [], []
 valid_image_names, valid_labels = [], []
 test_image_names, test_labels = [], []
 
-sess = tf.Session()
+# sess = tf.Session()
+sess = None
 
 
 def _int64_feature(value):
@@ -215,18 +216,20 @@ if __name__ == '__main__':
     # loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(labels=labels, logits=vgg.fc8))
     # train = tf.train.AdagradOptimizer(0.0001).minimize(loss)
 
-    sess.run(tf.local_variables_initializer())
-    sess.run(tf.global_variables_initializer())
-    coord = tf.train.Coordinator()
-    threads = tf.train.start_queue_runners(sess=sess, coord=coord)
-    for i in range(50):
-        example, l = sess.run([train_image_batch, train_label_batch])
-        _, batch_loss = sess.run([train, loss],
-                                 feed_dict={images: example, labels: l, train_mode: True})
-        print l
-        print type(example)
-        print batch_loss
-        print ("Training Accuracy: {}".format(
-            accuracy.eval(feed_dict={images: example, labels: l, train_mode: True})))
-    coord.request_stop()
-    coord.join(threads)
+    with tf.Session() as sess:
+
+        sess.run(tf.local_variables_initializer())
+        sess.run(tf.global_variables_initializer())
+        coord = tf.train.Coordinator()
+        threads = tf.train.start_queue_runners(sess=sess, coord=coord)
+        for i in range(50):
+            example, l = sess.run([train_image_batch, train_label_batch])
+            _, batch_loss = sess.run([train, loss],
+                                     feed_dict={images: example, labels: l, train_mode: True})
+            print l
+            print type(example)
+            print batch_loss
+            print ("Training Accuracy: {}".format(
+                accuracy.eval(feed_dict={images: example, labels: l, train_mode: True})))
+        coord.request_stop()
+        coord.join(threads)
