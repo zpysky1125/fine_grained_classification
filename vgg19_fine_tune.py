@@ -137,16 +137,16 @@ with tf.Session() as sess:
             print("Correct_val_count: {}  Total_val_count: {}".format(valid_corrent_num, valid_image_num))
             print("Validation Data Accuracy: {}".format(100.0 * valid_corrent_num / (1.0 * valid_image_num)))
 
-            if i % 20 == 0:
-                test_image, test_label = sess.run([test_image_batch, test_label_batch])
-
-                test_corrent_num, test_loss = sess.run([num_correct_preds, loss],
-                                                       feed_dict={images: test_image,
-                                                                  labels: test_label,
-                                                                  train_mode: True})
-                print("Test Loss: {}".format(test_loss))
-                print("Correct_test_count: {}  Total_test_count: {}".format(test_corrent_num, test_image_num))
-                print("Test Data Accuracy: {}".format(100.0 * test_corrent_num / (1.0 * test_image_num)))
+            # if i % 20 == 0:
+            #     test_image, test_label = sess.run([test_image_batch, test_label_batch])
+            #
+            #     test_corrent_num, test_loss = sess.run([num_correct_preds, loss],
+            #                                            feed_dict={images: test_image,
+            #                                                       labels: test_label,
+            #                                                       train_mode: True})
+            #     print("Test Loss: {}".format(test_loss))
+            #     print("Correct_test_count: {}  Total_test_count: {}".format(test_corrent_num, test_image_num))
+            #     print("Test Data Accuracy: {}".format(100.0 * test_corrent_num / (1.0 * test_image_num)))
     except tf.errors.OutOfRangeError:
         print('Done!')
     finally:
