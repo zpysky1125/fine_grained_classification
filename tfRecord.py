@@ -125,11 +125,11 @@ def read_and_decode(filename):
 
     reader = tf.TFRecordReader()
     _, serialized_example = reader.read(filename_queue)
-    features = tf.parse_single_example(serialized_example, features = {
+    features = tf.parse_single_example(serialized_example, features={
         "image/encoded": tf.FixedLenFeature([], tf.string),
         "image/height": tf.FixedLenFeature([], tf.int64),
         "image/width": tf.FixedLenFeature([], tf.int64),
-        "image/class/label": tf.FixedLenFeature([], tf.int64),})
+        "image/class/label": tf.FixedLenFeature([], tf.int64), })
     image_encoded = features["image/encoded"]
     image_raw = tf.image.decode_jpeg(image_encoded, channels=3)
     img = tf.image.resize_image_with_crop_or_pad(image_raw, 224, 224)
@@ -146,10 +146,17 @@ def read_and_decode(filename):
     return img, label
 
 
-def get_batch(data, batch_size):
+def get_shuffle_batch(data, batch_size):
     img, label = read_and_decode(data)
     img_batch, label_batch = tf.train.shuffle_batch(
         [img, label], batch_size=batch_size, capacity=6000, min_after_dequeue=1000, allow_smaller_final_batch=True)
+    return img_batch, label_batch
+
+
+def get_batch(data, batch_size):
+    img, label = read_and_decode(data)
+    img_batch, label_batch = tf.train.batch(
+        [img, label], batch_size=batch_size, capacity=6000, allow_smaller_final_batch=True)
     return img_batch, label_batch
 
 
@@ -180,6 +187,3 @@ def main(unused_argv):
 
 if __name__ == '__main__':
     tf.app.run()
-
-
-

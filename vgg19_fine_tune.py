@@ -3,7 +3,7 @@ import sys
 import tensorflow as tf
 
 from vgg_network import vgg19_trainable as vgg19
-from tfRecord import get_batch
+from tfRecord import get_batch, get_shuffle_batch
 
 sys.path.append('../')
 
@@ -42,7 +42,8 @@ num_correct_preds = tf.reduce_sum(tf.cast(correct_prediction, tf.float32))
 
 start = time.time()
 
-train_image_batch, train_label_batch = get_batch("train.tfrecords", train_batch_size)
+train_image_batch, train_label_batch = get_shuffle_batch("train.tfrecords", train_batch_size)
+test_train_image_batch, test_train_label_batch = get_batch("train.tfrecords", train_batch_size)
 valid_image_batch, valid_label_batch = get_batch("valid.tfrecords", valid_batch_size)
 test_image_batch, test_label_batch = get_batch("test.tfrecords", test_batch_size)
 
@@ -127,7 +128,6 @@ with tf.Session() as sess:
                 break
             for j in range(train_batch + 1):
                 train_image, train_label = sess.run([train_image_batch, train_label_batch])
-                print train_label
                 _, batch_loss, acc = sess.run([train, loss, accuracy],
                                          feed_dict={images: train_image, labels: train_label, train_mode: True})
                 print ("Epoch: {} step: {} loss: {} accuracy: {} time: {} seconds".format(i, j, batch_loss, acc, time.time() - start))
