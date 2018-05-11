@@ -1,9 +1,11 @@
 import time
-
+import sys
 import tensorflow as tf
 
-from fine_grained_classification.vgg_network import vgg19_trainable as vgg19
+from vgg_network import vgg19_trainable as vgg19
 from tfRecord import get_batch
+
+sys.path.append('../')
 
 train_image_num = 5094
 valid_image_num = 900
