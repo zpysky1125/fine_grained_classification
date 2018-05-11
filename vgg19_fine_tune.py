@@ -136,7 +136,7 @@ with tf.Session() as sess:
             train_correct_num = 0
 
             for j in range(train_batch + 1):
-                train_image, train_label = sess.run([train_image_batch, train_label_batch])
+                train_image, train_label = sess.run([test_train_image_batch, test_train_label_batch])
                 print train_label
                 train_batch_correct_num, train_batch_loss = sess.run([num_correct_preds, loss],
                                                                      feed_dict={images: train_image,
