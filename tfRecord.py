@@ -118,8 +118,8 @@ def create_record(image_names, image_labels, out_name):
     writer.close()
 
 
-def read_and_decode(filename, num_epoches):
-    filename_queue = tf.train.string_input_producer([filename], num_epochs=num_epoches)
+def read_and_decode(filename):
+    filename_queue = tf.train.string_input_producer([filename])
 
     reader = tf.TFRecordReader()
     _, serialized_example = reader.read(filename_queue)
@@ -141,6 +141,13 @@ def read_and_decode(filename, num_epoches):
     # label = tf.cast(features['label'], tf.int64)
 
     return img, label
+
+
+def get_batch(data, batch_size):
+    img, label = read_and_decode(data)
+    img_batch, label_batch = tf.train.shuffle_batch(
+        [img, label], batch_size=batch_size, capacity=20000, min_after_dequeue=1000, allow_smaller_final_batch=True)
+    return img_batch, label_batch
 
 
 def main(unused_argv):
