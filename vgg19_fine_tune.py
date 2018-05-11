@@ -4,7 +4,7 @@ import time
 from tfRecord import read_and_decode
 from tfRecord import get_batch
 
-train_batch_size = 256
+train_batch_size = 64
 valid_batch_size = 900
 valid_loss = 0.0
 valid_corrent_num = 0

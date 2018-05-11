@@ -146,7 +146,7 @@ def read_and_decode(filename):
 def get_batch(data, batch_size):
     img, label = read_and_decode(data)
     img_batch, label_batch = tf.train.shuffle_batch(
-        [img, label], batch_size=batch_size, capacity=20000, min_after_dequeue=1000, allow_smaller_final_batch=True)
+        [img, label], batch_size=batch_size, capacity=6000, min_after_dequeue=1000, allow_smaller_final_batch=True)
     return img_batch, label_batch
 
 
