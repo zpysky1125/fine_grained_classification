@@ -34,7 +34,8 @@ vgg.build(images, train_mode)
 # regularization_penalty = tf.contrib.layers.apply_regularization(l1_regularizer, weights)
 
 loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(labels=labels, logits=vgg.fc8))
-train = tf.train.AdamOptimizer().minimize(loss)
+# train = tf.train.AdamOptimizer().minimize(loss)
+train = tf.train.AdagradOptimizer(0.0001).minimize(loss)
 
 correct_prediction = tf.equal(tf.argmax(vgg.fc8, 1), labels)
 accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
