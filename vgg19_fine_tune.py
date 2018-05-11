@@ -132,7 +132,7 @@ with tf.Session() as sess:
             print ("Epoch: {}".format(i))
             print ("Train Loss: {}".format(train_loss))
             print ("Correct_train_count: {}  Total_train_count: {}".format(train_correct_num, train_image_num))
-            print ("Validation Data Accuracy: {}".format(100.0 * train_correct_num / (1.0 * train_image_num)))
+            print ("Train Data Accuracy: {}".format(100.0 * train_correct_num / (1.0 * train_image_num)))
             print
 
             valid_loss = 0.0
