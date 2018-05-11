@@ -118,8 +118,8 @@ def create_record(image_names, image_labels, out_name):
     writer.close()
 
 
-def read_and_decode(filename):
-    filename_queue = tf.train.string_input_producer([filename], num_epochs=20)
+def read_and_decode(filename, num_epoches):
+    filename_queue = tf.train.string_input_producer([filename], num_epochs=num_epoches)
 
     reader = tf.TFRecordReader()
     _, serialized_example = reader.read(filename_queue)
