@@ -92,8 +92,10 @@ def generate_test_valid_train_set():
             else:
                 train_valid_image_names.append(path + '/CUB_200_2011/CUB_200_2011/images/' + l[1])
 
+    print path + '/CUB_200_2011/CUB_200_2011/image_class_labels.txt'
     with open(path + '/CUB_200_2011/CUB_200_2011/image_class_labels.txt', 'r') as f:
         for l in f.readlines():
+            print l
             l = l.strip('\n').split(' ')
             if dict_train_test_split[l[0]] == 0:
                 test_labels.append(int(l[1]) - 1)
@@ -158,9 +160,9 @@ def main(unused_argv):
                                                                                         train_valid_labels,
                                                                                         test_size=0.15,
                                                                                         shuffle=True)
-    create_record(train_image_names, train_labels, "train.tfrecords")
-    create_record(valid_image_names, valid_labels, "valid.tfrecords")
-    create_record(test_image_names, test_labels, "test.tfrecords")
+    # create_record(train_image_names, train_labels, "train.tfrecords")
+    # create_record(valid_image_names, valid_labels, "valid.tfrecords")
+    # create_record(test_image_names, test_labels, "test.tfrecords")
 
     # img, label = read_and_decode("train.tfrecords")
     # img_batch, label_batch = tf.train.shuffle_batch([img, label],
