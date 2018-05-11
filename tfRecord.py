@@ -188,7 +188,7 @@ if __name__ == '__main__':
     # create_record(valid_image_names, valid_labels, "valid.tfrecords")
     # create_record(test_image_names, test_labels, "test.tfrecords")
 
-    img_batch, label_batch = get_batch("train.tfrecords", 30)
+    img_batch, label_batch = get_batch("train.tfrecords", 64)
     images = tf.placeholder(tf.float32, [None, 224, 224, 3])
     labels = tf.placeholder(tf.int64, [None])
     train_mode = tf.placeholder(tf.bool)
@@ -197,6 +197,7 @@ if __name__ == '__main__':
     vgg.build(images, train_mode)
 
     loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(labels=labels, logits=vgg.fc8))
+    train = tf.train.AdagradOptimizer(0.0001).minimize(loss)
 
     sess.run(tf.local_variables_initializer())
     sess.run(tf.global_variables_initializer())
@@ -204,8 +205,8 @@ if __name__ == '__main__':
     threads = tf.train.start_queue_runners(sess=sess, coord=coord)
     for i in range(10):
         example, l = sess.run([img_batch, label_batch])
-        batch_loss = sess.run([loss],
-                                 feed_dict={images: example, labels: l, train_mode: False})
+        _, batch_loss = sess.run([train, loss],
+                                 feed_dict={images: example, labels: l, train_mode: True})
         print l
         print type(example)
         print batch_loss
