@@ -1,9 +1,7 @@
 import os
+
 import tensorflow as tf
-from PIL import Image
 from sklearn.model_selection import train_test_split
-import vgg19_trainable as vgg19
-import time
 
 path = os.getcwd()
 
@@ -106,6 +104,7 @@ def generate_test_valid_train_set():
 def create_record(image_names, image_labels, out_name):
     writer = tf.python_io.TFRecordWriter(out_name)
     for index, name in enumerate(image_names):
+        print index
         img_path = name
         # img = Image.open(img_path)
         # img = img.resize((224, 224))

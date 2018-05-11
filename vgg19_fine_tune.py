@@ -1,6 +1,8 @@
-import tensorflow as tf
-import vgg19_trainable as vgg19
 import time
+
+import tensorflow as tf
+
+from fine_grained_classification.vgg_network import vgg19_trainable as vgg19
 from tfRecord import get_batch
 
 train_image_num = 5094
@@ -11,11 +13,14 @@ valid_batch_size = 64
 test_batch_size = 64
 train_epoches = 20
 
+train_losses, valid_losses, test_losses = [], [], []
+train_accuracys, valid_accuracys, test_accuracys = [], [], []
+
 images = tf.placeholder(tf.float32, [None, 224, 224, 3])
 labels = tf.placeholder(tf.int64, [None])
 train_mode = tf.placeholder(tf.bool)
 
-vgg = vgg19.Vgg19('./vgg19.npy')
+vgg = vgg19.Vgg19('./vgg_network/vgg19.npy')
 vgg.build(images, train_mode)
 
 loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(labels=labels, logits=vgg.fc8))
@@ -30,6 +35,8 @@ start = time.time()
 train_image_batch, train_label_batch = get_batch("train.tfrecords", train_batch_size)
 valid_image_batch, valid_label_batch = get_batch("valid.tfrecords", valid_batch_size)
 test_image_batch, test_label_batch = get_batch("test.tfrecords", test_batch_size)
+
+saver = tf.train.Saver()
 
 # valid_img, valid_label = [1]*valid_epoches, [1]*valid_epoches
 # next_valid_img, next_valid_label = [1]*valid_epoches, [1]*valid_epoches
@@ -93,9 +100,9 @@ test_image_batch, test_label_batch = get_batch("test.tfrecords", test_batch_size
 #     coord.join(threads)
 
 
-
 with tf.Session() as sess:
     print "Initialize Variables"
+
     coord = tf.train.Coordinator()
     threads = tf.train.start_queue_runners(sess=sess, coord=coord)
     sess.run(tf.local_variables_initializer())
@@ -135,6 +142,8 @@ with tf.Session() as sess:
             print ("Train Data Accuracy: {}".format(100.0 * train_correct_num / (1.0 * train_image_num)))
             print
 
+            train_losses.append(train_loss), train_accuracys.append(100.0 * train_correct_num / (1.0 * train_image_num))
+
             valid_loss = 0.0
             valid_corrent_num = 0
 
@@ -153,6 +162,8 @@ with tf.Session() as sess:
             print ("Correct_val_count: {}  Total_val_count: {}".format(valid_corrent_num, valid_image_num))
             print ("Validation Data Accuracy: {}".format(100.0 * valid_corrent_num / (1.0 * valid_image_num)))
             print
+
+            valid_losses.append(valid_loss), valid_accuracys.append(100.0 * valid_corrent_num / (1.0 * valid_image_num))
 
             if (i + 1) % 20 == 0:
                 test_loss = 0.0
@@ -173,8 +184,19 @@ with tf.Session() as sess:
                 print ("Test Data Accuracy: {}".format(100.0 * test_correct_num / (1.0 * test_image_num)))
                 print
 
+                test_losses.append(test_loss), test_accuracys.append(100.0 * test_correct_num / (1.0 * test_image_num))
+
+                saver.save(sess, './tmp/model.ckpt', global_step=i+1)
+
     except tf.errors.OutOfRangeError:
         print('Done!')
     finally:
         coord.request_stop()
     coord.join(threads)
+
+    print "Train loss:", train_losses
+    print "Train accuracy:", train_accuracys
+    print "Valid loss:", valid_losses
+    print "Valid accuracy:", valid_accuracys
+    print "Test loss:", test_losses
+    print "Test accuracy:", test_accuracys

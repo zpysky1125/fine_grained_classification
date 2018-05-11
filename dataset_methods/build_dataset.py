@@ -1,11 +1,10 @@
-import tensorlayer as tl
-import tensorflow as tf
 import os
-import numpy as np
-import vgg19_trainable as vgg19
-import utils
 import time
+
+import tensorflow as tf
 from sklearn.model_selection import train_test_split
+
+from fine_grained_classification.vgg_network import vgg19_trainable as vgg19
 
 batch_size = 16
 
