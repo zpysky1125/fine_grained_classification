@@ -5,7 +5,7 @@ from tfRecord import read_and_decode
 from tfRecord import get_batch
 
 train_batch_size = 64
-valid_batch_size = 900
+valid_batch_size = 64
 valid_loss = 0.0
 valid_corrent_num = 0
 valid_num = 900
@@ -107,24 +107,32 @@ with tf.Session() as sess:
     sess.run(tf.global_variables_initializer())
     try:
         train_batch = int(train_image_num / train_batch_size)
+        valid_batch = int(valid_image_num / valid_batch_size)
         for i in range(50):
+
             if coord.should_stop():
                 break
             for j in range(train_batch + 1):
                 train_image, train_label = sess.run([train_image_batch, train_label_batch])
                 _, batch_loss = sess.run([train, loss],
                                          feed_dict={images: train_image, labels: train_label, train_mode: True})
-                print ("VGG fine-tuning for {} batches in {} seconds".format(i, time.time() - start))
-                print ("step: {} loss: {}".format(i, batch_loss))
+                print ("VGG fine-tuning for {} batches in {} seconds".format(j, time.time() - start))
+                print ("step: {} loss: {}".format(j, batch_loss))
                 print ("Training Accuracy: {}".format(
                     accuracy.eval(feed_dict={images: train_image, labels: train_label, train_mode: True})))
 
-            valid_image, valid_label = sess.run([valid_image_batch, valid_label_batch])
+            valid_loss = 0.0
+            valid_corrent_num = 0
 
-            valid_corrent_num, valid_loss = sess.run([num_correct_preds, loss],
-                                                     feed_dict={images: valid_image,
-                                                                labels: valid_label,
-                                                                train_mode: True})
+            for j in range(valid_batch + 1):
+                valid_image, valid_label = sess.run([valid_image_batch, valid_label_batch])
+                valid_batch_corrent_num, valid_batch_loss = sess.run([num_correct_preds, loss],
+                                                                     feed_dict={images: valid_image,
+                                                                                labels: valid_label,
+                                                                                train_mode: True})
+                valid_loss += valid_batch_loss
+                valid_corrent_num += valid_batch_corrent_num
+
             print("Validation Loss: {}".format(valid_loss))
             print("Correct_val_count: {}  Total_val_count: {}".format(valid_corrent_num, valid_image_num))
             print("Validation Data Accuracy: {}".format(100.0 * valid_corrent_num / (1.0 * valid_image_num)))
