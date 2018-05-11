@@ -215,8 +215,8 @@ if __name__ == '__main__':
     start = time.time()
 
     train_image_batch, train_label_batch = get_batch("train.tfrecords", train_batch_size)
-    valid_image_batch, valid_label_batch = get_batch("valid.tfrecords", valid_batch_size)
-    test_image_batch, test_label_batch = get_batch("test.tfrecords", test_batch_size)
+    # valid_image_batch, valid_label_batch = get_batch("valid.tfrecords", valid_batch_size)
+    # test_image_batch, test_label_batch = get_batch("test.tfrecords", test_batch_size)
 
     with tf.Session() as sess:
         print "Initialize Variables"
@@ -243,59 +243,59 @@ if __name__ == '__main__':
                 train_loss = 0.0
                 train_correct_num = 0
 
-                for j in range(train_batch + 1):
-                    train_image, train_label = sess.run([train_image_batch, train_label_batch])
-                    train_batch_correct_num, train_batch_loss = sess.run([num_correct_preds, loss],
-                                                                         feed_dict={images: train_image,
-                                                                                    labels: train_label,
-                                                                                    train_mode: False})
-                    train_loss += train_batch_loss
-                    train_correct_num += train_batch_correct_num
+                # for j in range(train_batch + 1):
+                #     train_image, train_label = sess.run([train_image_batch, train_label_batch])
+                #     train_batch_correct_num, train_batch_loss = sess.run([num_correct_preds, loss],
+                #                                                          feed_dict={images: train_image,
+                #                                                                     labels: train_label,
+                #                                                                     train_mode: False})
+                #     train_loss += train_batch_loss
+                #     train_correct_num += train_batch_correct_num
+                #
+                # print
+                # print ("Epoch: {}".format(i))
+                # print ("Train Loss: {}".format(train_loss))
+                # print ("Correct_train_count: {}  Total_train_count: {}".format(train_correct_num, train_image_num))
+                # print ("Train Data Accuracy: {}".format(100.0 * train_correct_num / (1.0 * train_image_num)))
+                # print
+                #
+                # valid_loss = 0.0
+                # valid_corrent_num = 0
 
-                print
-                print ("Epoch: {}".format(i))
-                print ("Train Loss: {}".format(train_loss))
-                print ("Correct_train_count: {}  Total_train_count: {}".format(train_correct_num, train_image_num))
-                print ("Train Data Accuracy: {}".format(100.0 * train_correct_num / (1.0 * train_image_num)))
-                print
-
-                valid_loss = 0.0
-                valid_corrent_num = 0
-
-                for j in range(valid_batch + 1):
-                    valid_image, valid_label = sess.run([valid_image_batch, valid_label_batch])
-                    valid_batch_correct_num, valid_batch_loss = sess.run([num_correct_preds, loss],
-                                                                         feed_dict={images: valid_image,
-                                                                                    labels: valid_label,
-                                                                                    train_mode: False})
-                    valid_loss += valid_batch_loss
-                    valid_corrent_num += valid_batch_correct_num
-
-                print
-                print ("Epoch: {}".format(i))
-                print ("Validation Loss: {}".format(valid_loss))
-                print ("Correct_val_count: {}  Total_val_count: {}".format(valid_corrent_num, valid_image_num))
-                print ("Validation Data Accuracy: {}".format(100.0 * valid_corrent_num / (1.0 * valid_image_num)))
-                print
-
-                if (i + 1) % 20 == 0:
-                    test_loss = 0.0
-                    test_correct_num = 0
-                    for j in range(test_batch + 1):
-                        test_image, test_label = sess.run([test_image_batch, test_label_batch])
-                        test_batch_correct_num, test_batch_loss = sess.run([num_correct_preds, loss],
-                                                                           feed_dict={images: test_image,
-                                                                                      labels: test_label,
-                                                                                      train_mode: False})
-                        test_loss += test_batch_loss
-                        test_correct_num += test_batch_correct_num
-
-                    print
-                    print ("Epoch: {}", i)
-                    print ("Test Loss: {}".format(test_loss))
-                    print ("Correct_test_count: {}  Total_test_count: {}".format(test_correct_num, test_image_num))
-                    print ("Test Data Accuracy: {}".format(100.0 * test_correct_num / (1.0 * test_image_num)))
-                    print
+                # for j in range(valid_batch + 1):
+                #     valid_image, valid_label = sess.run([valid_image_batch, valid_label_batch])
+                #     valid_batch_correct_num, valid_batch_loss = sess.run([num_correct_preds, loss],
+                #                                                          feed_dict={images: valid_image,
+                #                                                                     labels: valid_label,
+                #                                                                     train_mode: False})
+                #     valid_loss += valid_batch_loss
+                #     valid_corrent_num += valid_batch_correct_num
+                #
+                # print
+                # print ("Epoch: {}".format(i))
+                # print ("Validation Loss: {}".format(valid_loss))
+                # print ("Correct_val_count: {}  Total_val_count: {}".format(valid_corrent_num, valid_image_num))
+                # print ("Validation Data Accuracy: {}".format(100.0 * valid_corrent_num / (1.0 * valid_image_num)))
+                # print
+                #
+                # if (i + 1) % 20 == 0:
+                #     test_loss = 0.0
+                #     test_correct_num = 0
+                #     for j in range(test_batch + 1):
+                #         test_image, test_label = sess.run([test_image_batch, test_label_batch])
+                #         test_batch_correct_num, test_batch_loss = sess.run([num_correct_preds, loss],
+                #                                                            feed_dict={images: test_image,
+                #                                                                       labels: test_label,
+                #                                                                       train_mode: False})
+                #         test_loss += test_batch_loss
+                #         test_correct_num += test_batch_correct_num
+                #
+                #     print
+                #     print ("Epoch: {}", i)
+                #     print ("Test Loss: {}".format(test_loss))
+                #     print ("Correct_test_count: {}  Total_test_count: {}".format(test_correct_num, test_image_num))
+                #     print ("Test Data Accuracy: {}".format(100.0 * test_correct_num / (1.0 * test_image_num)))
+                #     print
 
         except tf.errors.OutOfRangeError:
             print('Done!')
