@@ -188,7 +188,6 @@ if __name__ == '__main__':
     # create_record(valid_image_names, valid_labels, "valid.tfrecords")
     # create_record(test_image_names, test_labels, "test.tfrecords")
 
-    img_batch, label_batch = get_batch("train.tfrecords", 64)
     images = tf.placeholder(tf.float32, [None, 224, 224, 3])
     labels = tf.placeholder(tf.int64, [None])
     train_mode = tf.placeholder(tf.bool)
@@ -199,16 +198,35 @@ if __name__ == '__main__':
     loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(labels=labels, logits=vgg.fc8))
     train = tf.train.AdagradOptimizer(0.0001).minimize(loss)
 
+    correct_prediction = tf.equal(tf.argmax(vgg.fc8, 1), labels)
+    accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
+    num_correct_preds = tf.reduce_sum(tf.cast(correct_prediction, tf.float32))
+
+    train_image_batch, train_label_batch = get_batch("train.tfrecords", 64)
+
+    # img_batch, label_batch = get_batch("train.tfrecords", 64)
+    # images = tf.placeholder(tf.float32, [None, 224, 224, 3])
+    # labels = tf.placeholder(tf.int64, [None])
+    # train_mode = tf.placeholder(tf.bool)
+    #
+    # vgg = vgg19.Vgg19('./vgg19.npy')
+    # vgg.build(images, train_mode)
+    #
+    # loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(labels=labels, logits=vgg.fc8))
+    # train = tf.train.AdagradOptimizer(0.0001).minimize(loss)
+
     sess.run(tf.local_variables_initializer())
     sess.run(tf.global_variables_initializer())
     coord = tf.train.Coordinator()
     threads = tf.train.start_queue_runners(sess=sess, coord=coord)
-    for i in range(10):
-        example, l = sess.run([img_batch, label_batch])
+    for i in range(50):
+        example, l = sess.run([train_image_batch, train_label_batch])
         _, batch_loss = sess.run([train, loss],
                                  feed_dict={images: example, labels: l, train_mode: True})
         print l
         print type(example)
         print batch_loss
+        print ("Training Accuracy: {}".format(
+            accuracy.eval(feed_dict={images: example, labels: l, train_mode: True})))
     coord.request_stop()
     coord.join(threads)
