@@ -105,7 +105,7 @@ def generate_test_valid_train_set():
 
 def create_record(image_names, image_labels, out_name):
     writer = tf.python_io.TFRecordWriter(out_name)
-    for index, name in enumerate(image_names[:64]):
+    for index, name in enumerate(image_names[:128]):
         print index
         img_path = name
         # img = Image.open(img_path)
@@ -135,6 +135,7 @@ def read_and_decode(filename):
     image_raw = tf.image.decode_jpeg(image_encoded, channels=3)
     img = tf.image.resize_image_with_crop_or_pad(image_raw, 224, 224)
     label = tf.cast(features["image/class/label"], tf.int64)
+    label = tf.one_hot(label, 200)
 
     # features = tf.parse_single_example(serialized_example, features={
     #     'label': tf.FixedLenFeature([], tf.int64),
