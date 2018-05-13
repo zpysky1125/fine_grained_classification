@@ -81,10 +81,10 @@ class BirdClassificationGenerator(object):
 
 
 # #pre-processing stuff
-# def gray2rgb(img, path):
-#     if len(img.shape) < 3:
-#         img = np.stack((img,)*3,axis=2)
-#     return img
+def gray2rgb(img):
+    if len(img.shape) < 3:
+        img = np.stack((img,)*3,axis=2)
+    return img
 #
 # def random_flip_lr(img):
 #     rand_num = np.random.rand(1)
@@ -126,7 +126,9 @@ def get_batch(generator):
     for i in range(len(paths)):
         img = Image.open("./CUB_200_2011/CUB_200_2011/images/" + paths[i])
         img = img.resize((224, 224))
-        imgs.append(np.asarray(img))
+        img = np.asarray(img)
+        img = gray2rgb(img)
+        imgs.append(img)
     imgs = np.asarray(imgs, dtype=np.float32)
     labels = np.asarray(labels, dtype=np.int64)
     return imgs, labels
