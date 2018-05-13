@@ -43,7 +43,7 @@ vgg.build(images, train_mode)
 # regularization_penalty = tf.contrib.layers.apply_regularization(l1_regularizer, weights)
 
 loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(labels=labels, logits=vgg.fc8))
-train = tf.train.AdagradOptimizer(0.0001).minimize(loss)
+train = tf.train.MomentumOptimizer(0.0005, 0.9).minimize(loss)
 
 correct_prediction = tf.equal(tf.argmax(vgg.fc8, 1), labels)
 accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
@@ -93,13 +93,12 @@ with tf.Session() as sess:
             print
             print ("Epoch: {}".format(i))
             print ("Train Loss: {}".format(train_loss))
-            print ("Correct_train_count: {}  Total_train_count: {}".format(train_correct_num,
-                                                                           train_batch_size * (train_batch + 1)))
-            print ("Train Data Accuracy: {}".format(100.0 * train_correct_num / (1.0 * train_batch_size * (train_batch + 1))))
+            print ("Correct_train_count: {}  Total_train_count: {}".format(train_correct_num, train_image_num))
+            print ("Train Data Accuracy: {}".format(100.0 * train_correct_num / (1.0 * train_image_num)))
             print
 
             train_losses.append(train_loss), train_accuracys.append(
-                100.0 * train_correct_num / (1.0 * train_batch_size * (train_batch + 1)))
+                100.0 * train_correct_num / (1.0 * train_image_num))
 
             valid_loss = 0.0
             valid_corrent_num = 0
@@ -117,13 +116,12 @@ with tf.Session() as sess:
             print
             print ("Epoch: {}".format(i))
             print ("Validation Loss: {}".format(valid_loss))
-            print ("Correct_val_count: {}  Total_val_count: {}".format(valid_corrent_num,
-                                                                       valid_batch_size * (valid_batch + 1)))
-            print ("Validation Data Accuracy: {}".format(100.0 * valid_corrent_num / (1.0 * valid_batch_size * (valid_batch + 1))))
+            print ("Correct_val_count: {}  Total_val_count: {}".format(valid_corrent_num, valid_image_num))
+            print ("Validation Data Accuracy: {}".format(100.0 * valid_corrent_num / (1.0 * valid_image_num)))
             print
 
             valid_losses.append(valid_loss), valid_accuracys.append(
-                100.0 * valid_corrent_num / (1.0 * valid_batch_size * (valid_batch + 1)))
+                100.0 * valid_corrent_num / (1.0 * valid_image_num))
 
             if (i + 1) % 10 == 0:
                 test_loss = 0.0
@@ -142,10 +140,10 @@ with tf.Session() as sess:
                 print ("Epoch: {}", i)
                 print ("Test Loss: {}".format(test_loss))
                 print ("Correct_test_count: {}  Total_test_count: {}".format(test_correct_num, test_image_num))
-                print ("Test Data Accuracy: {}".format(100.0 * test_correct_num / (1.0 * test_batch_size * (test_batch + 1))))
+                print ("Test Data Accuracy: {}".format(100.0 * test_correct_num / (1.0 * test_image_num)))
                 print
 
-                test_losses.append(test_loss), test_accuracys.append(100.0 * test_correct_num / (1.0 * test_batch_size * (test_batch + 1)))
+                test_losses.append(test_loss), test_accuracys.append(100.0 * test_correct_num / (1.0 * test_image_num))
 
                 saver.save(sess, './tmp/model.ckpt', global_step=i + 1)
 
