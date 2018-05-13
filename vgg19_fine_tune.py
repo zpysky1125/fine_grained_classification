@@ -3,7 +3,8 @@ import sys
 import tensorflow as tf
 
 from vgg_network import vgg19_trainable as vgg19
-from tfRecord import get_batch, get_shuffle_batch
+# from tfRecord import get_batch, get_shuffle_batch
+from input_generator import get_batch, BirdClassificationGenerator
 
 sys.path.append('../')
 
@@ -13,10 +14,19 @@ test_image_num = 5794
 train_batch_size = 64
 valid_batch_size = 64
 test_batch_size = 64
-train_epoches = 20
+
+train_batch = train_image_num // train_batch_size if train_image_num % train_batch_size == 0 else train_image_num // train_batch_size + 1
+valid_batch = valid_image_num // valid_batch_size if valid_image_num % valid_batch_size == 0 else valid_image_num // valid_batch_size + 1
+test_batch = test_image_num // test_batch_size if test_image_num % test_batch_size == 0 else test_image_num // test_batch_size + 1
+
 
 train_losses, valid_losses, test_losses = [], [], []
 train_accuracys, valid_accuracys, test_accuracys = [], [], []
+
+bird_classification_generator = BirdClassificationGenerator("./CUB_200_2011/CUB_200_2011/")
+train_generator = bird_classification_generator.train_generator(train_batch_size)
+valid_generator = bird_classification_generator.valid_generator(valid_batch_size)
+test_generator = bird_classification_generator.test_generator(test_batch_size)
 
 images = tf.placeholder(tf.float32, [None, 224, 224, 3])
 labels = tf.placeholder(tf.int64, [None])
@@ -41,10 +51,10 @@ num_correct_preds = tf.reduce_sum(tf.cast(correct_prediction, tf.float32))
 
 start = time.time()
 
-train_image_batch, train_label_batch = get_shuffle_batch("train.tfrecords", train_batch_size)
-test_train_image_batch, test_train_label_batch = get_batch("train.tfrecords", train_batch_size)
-valid_image_batch, valid_label_batch = get_batch("valid.tfrecords", valid_batch_size)
-test_image_batch, test_label_batch = get_batch("test.tfrecords", test_batch_size)
+# train_image_batch, train_label_batch = get_shuffle_batch("train.tfrecords", train_batch_size)
+# test_train_image_batch, test_train_label_batch = get_batch("train.tfrecords", train_batch_size)
+# valid_image_batch, valid_label_batch = get_batch("valid.tfrecords", valid_batch_size)
+# test_image_batch, test_label_batch = get_batch("test.tfrecords", test_batch_size)
 
 saver = tf.train.Saver()
 
@@ -56,15 +66,13 @@ with tf.Session() as sess:
     sess.run(tf.local_variables_initializer())
     sess.run(tf.global_variables_initializer())
     try:
-        train_batch = int(train_image_num / train_batch_size)
-        valid_batch = int(valid_image_num / valid_batch_size)
-        test_batch = int(test_image_num / test_batch_size)
-        for i in range(100):
 
+        for i in range(100):
             if coord.should_stop():
                 break
-            for j in range(train_batch + 1):
-                train_image, train_label = sess.run([train_image_batch, train_label_batch])
+            for j in range(train_batch):
+                # train_image, train_label = sess.run([train_image_batch, train_label_batch])
+                train_image, train_label = get_batch(train_generator)
                 _, batch_loss, acc = sess.run([train, loss, accuracy],
                                               feed_dict={images: train_image, labels: train_label, train_mode: True})
                 # print ("Epoch: {} step: {} loss: {} accuracy: {} time: {} seconds".format(i, j, batch_loss, acc * 100.0, time.time() - start))
@@ -72,8 +80,9 @@ with tf.Session() as sess:
             train_loss = 0.0
             train_correct_num = 0
 
-            for j in range(train_batch + 1):
-                test_train_image, test_train_label = sess.run([test_train_image_batch, test_train_label_batch])
+            for j in range(train_batch):
+                # test_train_image, test_train_label = sess.run([test_train_image_batch, test_train_label_batch])
+                test_train_image, test_train_label = get_batch(train_generator)
                 train_batch_correct_num, train_batch_loss = sess.run([num_correct_preds, loss],
                                                                      feed_dict={images: test_train_image,
                                                                                 labels: test_train_label,
@@ -86,8 +95,7 @@ with tf.Session() as sess:
             print ("Train Loss: {}".format(train_loss))
             print ("Correct_train_count: {}  Total_train_count: {}".format(train_correct_num,
                                                                            train_batch_size * (train_batch + 1)))
-            print (
-            "Train Data Accuracy: {}".format(100.0 * train_correct_num / (1.0 * train_batch_size * (train_batch + 1))))
+            print ("Train Data Accuracy: {}".format(100.0 * train_correct_num / (1.0 * train_batch_size * (train_batch + 1))))
             print
 
             train_losses.append(train_loss), train_accuracys.append(
@@ -96,8 +104,9 @@ with tf.Session() as sess:
             valid_loss = 0.0
             valid_corrent_num = 0
 
-            for j in range(valid_batch + 1):
-                valid_image, valid_label = sess.run([valid_image_batch, valid_label_batch])
+            for j in range(valid_batch):
+                # valid_image, valid_label = sess.run([valid_image_batch, valid_label_batch])
+                valid_image, valid_label = get_batch(valid_generator)
                 valid_batch_correct_num, valid_batch_loss = sess.run([num_correct_preds, loss],
                                                                      feed_dict={images: valid_image,
                                                                                 labels: valid_label,
@@ -110,8 +119,7 @@ with tf.Session() as sess:
             print ("Validation Loss: {}".format(valid_loss))
             print ("Correct_val_count: {}  Total_val_count: {}".format(valid_corrent_num,
                                                                        valid_batch_size * (valid_batch + 1)))
-            print ("Validation Data Accuracy: {}".format(
-                100.0 * valid_corrent_num / (1.0 * valid_batch_size * (valid_batch + 1))))
+            print ("Validation Data Accuracy: {}".format(100.0 * valid_corrent_num / (1.0 * valid_batch_size * (valid_batch + 1))))
             print
 
             valid_losses.append(valid_loss), valid_accuracys.append(
@@ -120,8 +128,9 @@ with tf.Session() as sess:
             if (i + 1) % 10 == 0:
                 test_loss = 0.0
                 test_correct_num = 0
-                for j in range(test_batch + 1):
-                    test_image, test_label = sess.run([test_image_batch, test_label_batch])
+                for j in range(test_batch):
+                    # test_image, test_label = sess.run([test_image_batch, test_label_batch])
+                    test_image, test_label = get_batch(test_generator)
                     test_batch_correct_num, test_batch_loss = sess.run([num_correct_preds, loss],
                                                                        feed_dict={images: test_image,
                                                                                   labels: test_label,
@@ -133,12 +142,10 @@ with tf.Session() as sess:
                 print ("Epoch: {}", i)
                 print ("Test Loss: {}".format(test_loss))
                 print ("Correct_test_count: {}  Total_test_count: {}".format(test_correct_num, test_image_num))
-                print (
-                "Test Data Accuracy: {}".format(100.0 * test_correct_num / (1.0 * test_batch_size * (test_batch + 1))))
+                print ("Test Data Accuracy: {}".format(100.0 * test_correct_num / (1.0 * test_batch_size * (test_batch + 1))))
                 print
 
-                test_losses.append(test_loss), test_accuracys.append(
-                    100.0 * test_correct_num / (1.0 * test_batch_size * (test_batch + 1)))
+                test_losses.append(test_loss), test_accuracys.append(100.0 * test_correct_num / (1.0 * test_batch_size * (test_batch + 1)))
 
                 saver.save(sess, './tmp/model.ckpt', global_step=i + 1)
 

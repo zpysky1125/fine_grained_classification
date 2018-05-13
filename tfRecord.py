@@ -134,6 +134,7 @@ def read_and_decode(filename):
     image_encoded = features["image/encoded"]
     image_raw = tf.image.decode_jpeg(image_encoded, channels=3)
     img = tf.image.resize_image_with_crop_or_pad(image_raw, 224, 224)
+    img = tf.cast(img, dtype=tf.float32)
     label = tf.cast(features["image/class/label"], tf.int64)
 
     # features = tf.parse_single_example(serialized_example, features={
