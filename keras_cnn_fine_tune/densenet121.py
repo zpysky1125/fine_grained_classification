@@ -14,10 +14,9 @@ from tfRecord import get_batch, get_shuffle_batch
 train_image_num = 5094
 valid_image_num = 900
 test_image_num = 5794
-train_batch_size = 64
-valid_batch_size = 64
-test_batch_size = 64
-train_epoches = 20
+train_batch_size = 16
+valid_batch_size = 16
+test_batch_size = 16
 
 img_rows, img_cols = 224, 224  # Resolution of inputs
 channel = 3
