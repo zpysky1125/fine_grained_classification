@@ -91,7 +91,7 @@ def densenet121_model(img_rows, img_cols, color_type=1, nb_dense_block=4, growth
     model = Model(img_input, x_newfc)
 
     # Learning rate is changed to 0.001
-    sgd = SGD(lr=1e-3, decay=1e-6, momentum=0.9, nesterov=True)
+    sgd = SGD(lr=1e-4, decay=1e-6, momentum=0.9, nesterov=True)
     model.compile(optimizer=sgd, loss='categorical_crossentropy', metrics=['accuracy'])
 
     return model
@@ -194,8 +194,6 @@ def dense_block(x, stage, nb_layers, nb_filter, growth_rate, dropout_rate=None, 
 
 if __name__ == '__main__':
 
-    saver = tf.train.Saver()
-
     train_image_batch, train_label_batch = get_shuffle_batch("train.tfrecords", train_batch_size)
     test_train_image_batch, test_train_label_batch = get_batch("train.tfrecords", train_batch_size)
     valid_image_batch, valid_label_batch = get_batch("valid.tfrecords", valid_batch_size)
@@ -280,7 +278,7 @@ if __name__ == '__main__':
                     test_losses.append(test_loss)
                     test_accuracys.append(100.0 * test_correct_num / (1.0 * test_batch_size * (test_batch + 1)))
 
-                    saver.save(sess, './tmp/model.ckpt', global_step=i + 1)
+                    model.save('densenet121_' + str(i) + '.h5')
 
         except tf.errors.OutOfRangeError:
             print('Done!')
