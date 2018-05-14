@@ -120,11 +120,11 @@ def gray2rgb(img):
 #     return img
 
 
-def get_batch(generator):
+def get_batch(generator, dataset_path='./CUB_200_2011/CUB_200_2011/images/'):
     imgs = []
     paths, labels = generator.next()
     for i in range(len(paths)):
-        img = Image.open("./CUB_200_2011/CUB_200_2011/images/" + paths[i])
+        img = Image.open(dataset_path + paths[i])
         img = img.resize((224, 224))
         img = np.asarray(img)
         img = gray2rgb(img)
