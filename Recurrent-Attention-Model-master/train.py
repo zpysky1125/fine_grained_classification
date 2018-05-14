@@ -95,7 +95,7 @@ with tf.Session() as sess:
                                                                                       ram.img_ph: images,
                                                                                       ram.lbl_ph: labels
                                                                                   })
-        if step and step % 10 == 0:
+        if step and step % 100 == 0:
             logging.info(
                 'step {}: lr = {:3.6f}\tloss = {:3.4f}\txent = {:3.4f}\treward = {:3.4f}\tadvantage = {:3.4f}\tbaselines_mse = {:3.4f}'.format(
                     step, learning_rate, loss, xent, reward, advantage, baselines_mse))
@@ -110,14 +110,14 @@ with tf.Session() as sess:
                     images, labels = get_batch(valid_generator, "../CUB_200_2011/CUB_200_2011/images/") if dataset == 'valid' else get_batch(test_generator, "../CUB_200_2011/CUB_200_2011/images/")
                     labels_bak = labels
                     # Duplicate M times
-                    images = np.tile(images, [FLAGS.M, 1])
+                    images = np.tile(images, [FLAGS.M, 1, 1, 1])
                     labels = np.tile(labels, [FLAGS.M])
                     softmax = sess.run(ram.softmax,
                                        feed_dict={
                                            ram.img_ph: images,
                                            ram.lbl_ph: labels
                                        })
-                    softmax = np.reshape(softmax, [FLAGS.M, -1, 10])
+                    softmax = np.reshape(softmax, [FLAGS.M, -1, 200])
                     softmax = np.mean(softmax, 0)
                     prediction = np.argmax(softmax, 1).flatten()
                     correct_cnt += np.sum(prediction == labels_bak)
