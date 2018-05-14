@@ -114,8 +114,7 @@ class GlimpseNetwork(object):
         # self.pool5 = self.max_pool(self.conv5_3, 'pool5')
 
         self.fc6 = self.avg_pool(self.conv5_3, "fc6")
-
-        print self.fc6.shape
+        self.fc6 = tf.reshape(self.fc6, [-1, 1024])
 
         # self.fc6 = self.fc_layer(self.pool3, 25088, 4096, "fc6")  # 25088 = ((224 // (2 ** 5)) ** 2) * 512
         # self.relu6 = tf.nn.relu(self.fc6)
