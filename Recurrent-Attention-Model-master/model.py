@@ -265,6 +265,8 @@ class RecurrentAttentionModel(object):
         self.prediction = tf.argmax(logits, 1)
         self.softmax = tf.nn.softmax(logits)
 
+        self.correct_num = tf.reduce_sum(tf.equal(self.prediction, self.lbl_ph), tf.float32)
+
         if is_training:
             # classification loss
             self.xent = tf.reduce_mean(

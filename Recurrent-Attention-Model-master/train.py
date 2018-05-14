@@ -18,9 +18,7 @@ from input_generator import get_batch, BirdClassificationGenerator
 train_image_num = 5094
 valid_image_num = 900
 test_image_num = 5794
-train_batch_size = 64
-valid_batch_size = 64
-test_batch_size = 64
+train_batch_size = valid_batch_size = test_batch_size = 16
 
 train_batch = train_image_num // train_batch_size if train_image_num % train_batch_size == 0 else train_image_num // train_batch_size + 1
 valid_batch = valid_image_num // valid_batch_size if valid_image_num % valid_batch_size == 0 else valid_image_num // valid_batch_size + 1
@@ -101,7 +99,7 @@ with tf.Session() as sess:
                     step, learning_rate, loss, xent, reward, advantage, baselines_mse))
 
         # Evaluation
-        if step and step % train_batch == 0:
+        if step and step % train_batch == 1:
             for dataset in ['valid', 'test']:
                 steps_per_epoch = valid_batch if dataset == 'valid' else test_batch
                 correct_cnt = 0
@@ -117,9 +115,17 @@ with tf.Session() as sess:
                                            ram.img_ph: images,
                                            ram.lbl_ph: labels
                                        })
+                    print (softmax)
+                    print (softmax.shape)
                     softmax = np.reshape(softmax, [FLAGS.M, -1, 200])
+                    print (softmax)
+                    print (softmax.shape)
                     softmax = np.mean(softmax, 0)
+                    print (softmax)
+                    print (softmax.shape)
                     prediction = np.argmax(softmax, 1).flatten()
+                    print (prediction)
+                    print (prediction.shape)
                     correct_cnt += np.sum(prediction == labels_bak)
                 acc = correct_cnt / num_samples
                 if dataset == 'valid':
