@@ -265,6 +265,7 @@ class RecurrentAttentionModel(object):
         self.prediction = tf.argmax(logits, 1)
         self.softmax = tf.nn.softmax(logits)
 
+
         if is_training:
             # classification loss
             self.xent = tf.reduce_mean(
@@ -283,9 +284,9 @@ class RecurrentAttentionModel(object):
             # hybrid loss
             self.loss = -logllratio + self.xent + self.baselines_mse
             params = tf.trainable_variables()
-            self.gradients = tf.gradients(self.loss, params)
-            self.clipped_gradients, norm = tf.clip_by_global_norm(self.gradients, max_gradient_norm)
+            gradients = tf.gradients(self.loss, params)
+            clipped_gradients, norm = tf.clip_by_global_norm(gradients, max_gradient_norm)
             self.train_op = tf.train.AdagradOptimizer(self.learning_rate).apply_gradients(
-                zip(self.clipped_gradients, params), global_step=self.global_step)
+                zip(clipped_gradients, params), global_step=self.global_step)
 
         self.saver = tf.train.Saver(tf.global_variables(), max_to_keep=99999999)
