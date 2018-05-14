@@ -18,9 +18,9 @@ from input_generator import get_batch, BirdClassificationGenerator
 train_image_num = 5094
 valid_image_num = 900
 test_image_num = 5794
-train_batch_size = 8
-valid_batch_size = 8
-test_batch_size = 8
+train_batch_size = 64
+valid_batch_size = 64
+test_batch_size = 64
 
 train_batch = train_image_num // train_batch_size if train_image_num % train_batch_size == 0 else train_image_num // train_batch_size + 1
 valid_batch = valid_image_num // valid_batch_size if valid_image_num % valid_batch_size == 0 else valid_image_num // valid_batch_size + 1
@@ -95,7 +95,7 @@ with tf.Session() as sess:
                                                                                       ram.img_ph: images,
                                                                                       ram.lbl_ph: labels
                                                                                   })
-        if step and step % 100 == 0:
+        if step and step % 10 == 0:
             logging.info(
                 'step {}: lr = {:3.6f}\tloss = {:3.4f}\txent = {:3.4f}\treward = {:3.4f}\tadvantage = {:3.4f}\tbaselines_mse = {:3.4f}'.format(
                     step, learning_rate, loss, xent, reward, advantage, baselines_mse))
@@ -107,7 +107,7 @@ with tf.Session() as sess:
                 correct_cnt = 0
                 num_samples = steps_per_epoch * FLAGS.batch_size
                 for test_step in xrange(steps_per_epoch):
-                    images, labels = get_batch(valid_generator) if dataset == 'valid' else get_batch(test_generator)
+                    images, labels = get_batch(valid_generator, "../CUB_200_2011/CUB_200_2011/images/") if dataset == 'valid' else get_batch(test_generator, "../CUB_200_2011/CUB_200_2011/images/")
                     labels_bak = labels
                     # Duplicate M times
                     images = np.tile(images, [FLAGS.M, 1])
