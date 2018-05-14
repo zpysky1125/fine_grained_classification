@@ -34,10 +34,10 @@ logging.getLogger().setLevel(logging.INFO)
 
 # mnist = input_data.read_data_sets('MNIST_data', one_hot=False)
 
-tf.app.flags.DEFINE_float("learning_rate", 1e-3, "Learning rate.")
+tf.app.flags.DEFINE_float("learning_rate", 1e-2, "Learning rate.")
 tf.app.flags.DEFINE_float("learning_rate_decay_factor", 0.97,
                           "Learning rate decays by this much.")
-tf.app.flags.DEFINE_float("min_learning_rate", 1e-4, "Minimum learning rate.")
+tf.app.flags.DEFINE_float("min_learning_rate", 1e-3, "Minimum learning rate.")
 tf.app.flags.DEFINE_float("max_gradient_norm", 5.0, "Clip gradients to this norm.")
 tf.app.flags.DEFINE_integer("batch_size", train_batch_size, "Batch size to use during training.")
 tf.app.flags.DEFINE_integer("num_steps", 100000, "Number of training steps.")
@@ -99,11 +99,10 @@ with tf.Session() as sess:
                     step, learning_rate, loss, xent, reward, advantage, baselines_mse))
 
         # Evaluation
-        if step and step % train_batch == 1:
+        if step and step % train_batch == 0:
             for dataset in ['valid', 'test']:
                 steps_per_epoch = valid_batch if dataset == 'valid' else test_batch
                 correct_cnt = 0
-                num_samples = steps_per_epoch * FLAGS.batch_size
                 for test_step in xrange(steps_per_epoch):
                     images, labels = get_batch(valid_generator, "../CUB_200_2011/CUB_200_2011/images/") if dataset == 'valid' else get_batch(test_generator, "../CUB_200_2011/CUB_200_2011/images/")
                     labels_bak = labels
@@ -115,19 +114,11 @@ with tf.Session() as sess:
                                            ram.img_ph: images,
                                            ram.lbl_ph: labels
                                        })
-                    print (softmax)
-                    print (softmax.shape)
                     softmax = np.reshape(softmax, [FLAGS.M, -1, 200])
-                    print (softmax)
-                    print (softmax.shape)
                     softmax = np.mean(softmax, 0)
-                    print (softmax)
-                    print (softmax.shape)
                     prediction = np.argmax(softmax, 1).flatten()
-                    print (prediction)
-                    print (prediction.shape)
                     correct_cnt += np.sum(prediction == labels_bak)
-                acc = correct_cnt / num_samples
+                acc = correct_cnt / valid_image_num if dataset == 'valid' else correct_cnt / test_image_num
                 if dataset == 'valid':
                     logging.info('valid accuracy = {}'.format(acc))
                 else:
