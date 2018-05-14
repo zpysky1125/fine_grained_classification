@@ -18,9 +18,9 @@ from input_generator import get_batch, BirdClassificationGenerator
 train_image_num = 5094
 valid_image_num = 900
 test_image_num = 5794
-train_batch_size = 32
-valid_batch_size = 32
-test_batch_size = 32
+train_batch_size = 8
+valid_batch_size = 8
+test_batch_size = 8
 
 train_batch = train_image_num // train_batch_size if train_image_num % train_batch_size == 0 else train_image_num // train_batch_size + 1
 valid_batch = valid_image_num // valid_batch_size if valid_image_num % valid_batch_size == 0 else valid_image_num // valid_batch_size + 1
@@ -28,9 +28,9 @@ test_batch = test_image_num // test_batch_size if test_image_num % test_batch_si
 
 
 bird_classification_generator = BirdClassificationGenerator("../CUB_200_2011/CUB_200_2011/")
-train_generator = bird_classification_generator.train_generator(32)
-valid_generator = bird_classification_generator.valid_generator(32)
-test_generator = bird_classification_generator.test_generator(32)
+train_generator = bird_classification_generator.train_generator(train_batch_size)
+valid_generator = bird_classification_generator.valid_generator(valid_batch_size)
+test_generator = bird_classification_generator.test_generator(test_batch_size)
 
 logging.getLogger().setLevel(logging.INFO)
 
@@ -41,7 +41,7 @@ tf.app.flags.DEFINE_float("learning_rate_decay_factor", 0.97,
                           "Learning rate decays by this much.")
 tf.app.flags.DEFINE_float("min_learning_rate", 1e-4, "Minimum learning rate.")
 tf.app.flags.DEFINE_float("max_gradient_norm", 5.0, "Clip gradients to this norm.")
-tf.app.flags.DEFINE_integer("batch_size", 32, "Batch size to use during training.")
+tf.app.flags.DEFINE_integer("batch_size", train_batch_size, "Batch size to use during training.")
 tf.app.flags.DEFINE_integer("num_steps", 100000, "Number of training steps.")
 
 tf.app.flags.DEFINE_integer("patch_window_size", 64, "Size of glimpse patch window.")
