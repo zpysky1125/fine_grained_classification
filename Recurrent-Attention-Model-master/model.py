@@ -31,7 +31,7 @@ class RetinaSensor(object):
 
     def __call__(self, img_ph, loc):
         pth = tf.image.extract_glimpse(img_ph, [self.pth_size, self.pth_size], loc)
-        pth = tf.image.resize_images(pth, [224, 224])
+        # pth = tf.image.resize_images(pth, [224, 224])
         return pth
 
 
@@ -61,7 +61,6 @@ class GlimpseNetwork(object):
         rgb = self.retina_sensor(imgs_ph, locs)
         g = self.patch_feature_extractor(rgb, train_mode)
         l = self.loc_feature_extractor(locs)
-        c = tf.nn.relu(l+g)
         return tf.nn.relu(l+g)
 
         # g = tf.nn.xw_plus_b(tf.nn.relu(tf.nn.xw_plus_b(pths, self.g1_w, self.g1_b)), self.g2_w, self.g2_b)
@@ -80,15 +79,16 @@ class GlimpseNetwork(object):
     # vgg 16 network
     def patch_feature_extractor(self, rgb, train_mode=None):
         red, green, blue = tf.split(axis=3, num_or_size_splits=3, value=rgb)
-        assert red.get_shape().as_list()[1:] == [224, 224, 1]
-        assert green.get_shape().as_list()[1:] == [224, 224, 1]
-        assert blue.get_shape().as_list()[1:] == [224, 224, 1]
+        # assert red.get_shape().as_list()[1:] == [224, 224, 1]
+        # assert green.get_shape().as_list()[1:] == [224, 224, 1]
+        # assert blue.get_shape().as_list()[1:] == [224, 224, 1]
         bgr = tf.concat(axis=3, values=[
             blue - self.VGG_MEAN[0],
             green - self.VGG_MEAN[1],
             red - self.VGG_MEAN[2],
         ])
-        assert bgr.get_shape().as_list()[1:] == [224, 224, 3]
+        # assert bgr.get_shape().as_list()[1:] == [224, 224, 3]
+
 
         self.conv1_1 = self.conv_layer(bgr, 3, 64, "conv1_1")
         self.conv1_2 = self.conv_layer(self.conv1_1, 64, 64, "conv1_2")
@@ -108,31 +108,35 @@ class GlimpseNetwork(object):
         self.conv4_3 = self.conv_layer(self.conv4_2, 512, 512, "conv4_3")
         self.pool4 = self.max_pool(self.conv4_3, 'pool4')
 
-        self.conv5_1 = self.conv_layer(self.pool4, 512, 512, "conv5_1")
-        self.conv5_2 = self.conv_layer(self.conv5_1, 512, 512, "conv5_2")
-        self.conv5_3 = self.conv_layer(self.conv5_2, 512, 512, "conv5_3")
-        self.pool5 = self.max_pool(self.conv5_3, 'pool5')
+        self.conv5_1 = self.conv_layer(self.pool4, 512, 1024, "conv5_1")
+        self.conv5_2 = self.conv_layer(self.conv5_1, 1024, 1024, "conv5_2")
+        self.conv5_3 = self.conv_layer(self.conv5_2, 1024, 1024, "conv5_3")
+        # self.pool5 = self.max_pool(self.conv5_3, 'pool5')
 
-        self.fc6 = self.fc_layer(self.pool5, 25088, 4096, "fc6")  # 25088 = ((224 // (2 ** 5)) ** 2) * 512
-        self.relu6 = tf.nn.relu(self.fc6)
-        if train_mode is not None:
-            self.relu6 = tf.cond(train_mode, lambda: tf.nn.dropout(self.relu6, self.dropout), lambda: self.relu6)
-        else:
-            self.relu6 = tf.nn.dropout(self.relu6, self.dropout)
+        self.fc6 = self.avg_pool(self.conv5_3, "fc6")
 
-        self.fc7 = self.fc_layer(self.relu6, 4096, 4096, "fc7")
-        self.relu7 = tf.nn.relu(self.fc7)
-        if train_mode is not None:
-            self.relu7 = tf.cond(train_mode, lambda: tf.nn.dropout(self.relu7, self.dropout), lambda: self.relu7)
-        else:
-            self.relu7 = tf.nn.dropout(self.relu7, self.dropout)
+        print self.fc6.shape
+
+        # self.fc6 = self.fc_layer(self.pool3, 25088, 4096, "fc6")  # 25088 = ((224 // (2 ** 5)) ** 2) * 512
+        # self.relu6 = tf.nn.relu(self.fc6)
+        # if train_mode is not None:
+        #     self.relu6 = tf.cond(train_mode, lambda: tf.nn.dropout(self.relu6, self.dropout), lambda: self.relu6)
+        # else:
+        #     self.relu6 = tf.nn.dropout(self.relu6, self.dropout)
+        #
+        # self.fc7 = self.fc_layer(self.relu6, 4096, 4096, "fc7")
+        # self.relu7 = tf.nn.relu(self.fc7)
+        # if train_mode is not None:
+        #     self.relu7 = tf.cond(train_mode, lambda: tf.nn.dropout(self.relu7, self.dropout), lambda: self.relu7)
+        # else:
+        #     self.relu7 = tf.nn.dropout(self.relu7, self.dropout)
 
         # self.fc8 = self.fc_layer(self.relu7, 4096, 200, "fc8_fine")
         # self.prob = tf.nn.softmax(self.fc8, name="prob")
-        return self.relu7
+        return self.fc6
 
     def avg_pool(self, bottom, name):
-        return tf.nn.avg_pool(bottom, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME', name=name)
+        return tf.nn.avg_pool(bottom, ksize=[1, 7, 7, 1], strides=[1, 7, 7, 1], padding='SAME', name=name)
 
     def max_pool(self, bottom, name):
         return tf.nn.max_pool(bottom, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME', name=name)

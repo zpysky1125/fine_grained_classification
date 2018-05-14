@@ -133,6 +133,7 @@ def resnet50_model(img_rows, img_cols, color_type=1, num_classes=None):
 
     # Fully Connected Softmax Layer
     x_fc = AveragePooling2D((7, 7), name='avg_pool')(x)
+
     x_fc = Flatten()(x_fc)
     x_fc = Dense(1000, activation='softmax', name='fc1000')(x_fc)
 
