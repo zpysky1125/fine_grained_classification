@@ -209,12 +209,14 @@ class RecurrentAttentionModel(object):
 
         self.global_step = tf.Variable(0, trainable=False)
 
-        self.learning_rate = tf.maximum(tf.train.exponential_decay(
-            learning_rate, self.global_step,
-            training_steps_per_epoch,
-            learning_rate_decay_factor,
-            staircase=True),
-            min_learning_rate)
+        self.learning_rate = learning_rate
+
+        # self.learning_rate = tf.maximum(tf.train.exponential_decay(
+        #     learning_rate, self.global_step,
+        #     training_steps_per_epoch,
+        #     learning_rate_decay_factor,
+        #     staircase=True),
+        #     min_learning_rate)
 
         cell = BasicLSTMCell(cell_size)
 
@@ -286,7 +288,7 @@ class RecurrentAttentionModel(object):
             params = tf.trainable_variables()
             gradients = tf.gradients(self.loss, params)
             clipped_gradients, norm = tf.clip_by_global_norm(gradients, max_gradient_norm)
-            self.train_op = tf.train.AdagradOptimizer(self.learning_rate).apply_gradients(
+            self.train_op = tf.train.AdamOptimizer(self.learning_rate).apply_gradients(
                 zip(clipped_gradients, params), global_step=self.global_step)
 
         self.saver = tf.train.Saver(tf.global_variables(), max_to_keep=99999999)
