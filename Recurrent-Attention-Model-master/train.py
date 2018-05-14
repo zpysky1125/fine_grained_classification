@@ -14,7 +14,6 @@ sys.path.append('../')
 
 from input_generator import get_batch, BirdClassificationGenerator
 
-
 train_image_num = 5094
 valid_image_num = 900
 test_image_num = 5794
@@ -23,7 +22,6 @@ train_batch_size = valid_batch_size = test_batch_size = 16
 train_batch = train_image_num // train_batch_size if train_image_num % train_batch_size == 0 else train_image_num // train_batch_size + 1
 valid_batch = valid_image_num // valid_batch_size if valid_image_num % valid_batch_size == 0 else valid_image_num // valid_batch_size + 1
 test_batch = test_image_num // test_batch_size if test_image_num % test_batch_size == 0 else test_image_num // test_batch_size + 1
-
 
 bird_classification_generator = BirdClassificationGenerator("../CUB_200_2011/CUB_200_2011/")
 train_generator = bird_classification_generator.train_generator(train_batch_size)
@@ -72,8 +70,6 @@ ram = RecurrentAttentionModel(img_size=224,  # MNIST: 28 * 28
                               max_gradient_norm=FLAGS.max_gradient_norm,
                               is_training=True)
 
-
-
 with tf.Session() as sess:
     sess.run(tf.global_variables_initializer())
     for step in xrange(FLAGS.num_steps):
@@ -87,16 +83,17 @@ with tf.Session() as sess:
         # labels = np.tile(labels, [FLAGS.M])
 
         output_feed = [ram.train_op, ram.loss, ram.xent, ram.reward, ram.advantage, ram.baselines_mse,
-                       ram.learning_rate]
-        _, loss, xent, reward, advantage, baselines_mse, learning_rate = sess.run(output_feed,
-                                                                                  feed_dict={
-                                                                                      ram.img_ph: images,
-                                                                                      ram.lbl_ph: labels
-                                                                                  })
+                       ram.learning_rate, ram.gradients, ram.clipped_gradients]
+        _, loss, xent, reward, advantage, baselines_mse, learning_rate, gradient, clipped_gradient = sess.run(
+            output_feed,
+            feed_dict={
+                ram.img_ph: images,
+                ram.lbl_ph: labels
+            })
         if step and step % 100 == 0:
             logging.info(
-                'step {}: lr = {:3.6f}\tloss = {:3.4f}\txent = {:3.4f}\treward = {:3.4f}\tadvantage = {:3.4f}\tbaselines_mse = {:3.4f}'.format(
-                    step, learning_rate, loss, xent, reward, advantage, baselines_mse))
+                'step {}: lr = {:3.6f}\tloss = {:3.4f}\txent = {:3.4f}\treward = {:3.4f}\tadvantage = {:3.4f}\tbaselines_mse = {:3.4f}\tgradient= {:3.4f}\tclipped_gradient={:3.4f}'.format(
+                    step, learning_rate, loss, xent, reward, advantage, baselines_mse, gradient, clipped_gradient))
 
         # Evaluation
         if step and step % train_batch == 0:
@@ -104,7 +101,9 @@ with tf.Session() as sess:
                 steps_per_epoch = valid_batch if dataset == 'valid' else test_batch
                 correct_cnt = 0
                 for test_step in xrange(steps_per_epoch):
-                    images, labels = get_batch(valid_generator, "../CUB_200_2011/CUB_200_2011/images/") if dataset == 'valid' else get_batch(test_generator, "../CUB_200_2011/CUB_200_2011/images/")
+                    images, labels = get_batch(valid_generator,
+                                               "../CUB_200_2011/CUB_200_2011/images/") if dataset == 'valid' else get_batch(
+                        test_generator, "../CUB_200_2011/CUB_200_2011/images/")
                     labels_bak = labels
                     # Duplicate M times
                     images = np.tile(images, [FLAGS.M, 1, 1, 1])

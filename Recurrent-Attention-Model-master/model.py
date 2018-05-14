@@ -283,9 +283,9 @@ class RecurrentAttentionModel(object):
             # hybrid loss
             self.loss = -logllratio + self.xent + self.baselines_mse
             params = tf.trainable_variables()
-            gradients = tf.gradients(self.loss, params)
-            clipped_gradients, norm = tf.clip_by_global_norm(gradients, max_gradient_norm)
-            self.train_op = tf.train.AdamOptimizer(self.learning_rate).apply_gradients(
-                zip(clipped_gradients, params), global_step=self.global_step)
+            self.gradients = tf.gradients(self.loss, params)
+            self.clipped_gradients, norm = tf.clip_by_global_norm(self.gradients, max_gradient_norm)
+            self.train_op = tf.train.AdagradOptimizer(self.learning_rate).apply_gradients(
+                zip(self.clipped_gradients, params), global_step=self.global_step)
 
         self.saver = tf.train.Saver(tf.global_variables(), max_to_keep=99999999)
