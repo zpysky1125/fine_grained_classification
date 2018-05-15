@@ -74,6 +74,8 @@ class GlimpseNetwork(object):
 
         print("npy file loaded")
 
+        tf.set_random_seed(1)
+
         self.conv1_1_weight, self.conv1_1_bias = self.get_conv_var(3, 3, 64, "conv1_1")
         self.conv1_2_weight, self.conv1_2_bias = self.get_conv_var(3, 64, 64, "conv1_2")
         self.conv2_1_weight, self.conv2_1_bias = self.get_conv_var(3, 64, 128, "conv2_1")
@@ -232,6 +234,7 @@ class GlimpseNetwork(object):
 
     def get_fc_var(self, in_size, out_size, name):
         initial_value = tf.truncated_normal([in_size, out_size], 0.0, 0.001)
+        tf.get_variable()
         weights = self.get_var(initial_value, name, 0, name + "_weights")
         initial_value = tf.truncated_normal([out_size], .0, .001)
         biases = self.get_var(initial_value, name, 1, name + "_biases")
@@ -314,13 +317,18 @@ class RecurrentAttentionModel(object):
         rnn_inputs.extend([0] * num_glimpses)
 
         locs, loc_means = [], []
+        glimpses = []
 
         def loop_function(prev, _):
             loc, loc_mean = location_network(prev)
             locs.append(loc)
             loc_means.append(loc_mean)
             glimpse = glimpse_network(self.img_ph, loc)
+            glimpses.append(glimpse)
             return glimpse
+
+        self.locs = locs
+        self.glim = glimpses
 
         rnn_outputs, _ = rnn_decoder(rnn_inputs, init_state, cell, loop_function=loop_function)
 

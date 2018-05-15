@@ -100,7 +100,7 @@ with tf.Session() as sess:
                     step, FLAGS.learning_rate, loss, xent, reward, advantage, baselines_mse))
 
         # Evaluation
-        if step and step % train_batch == 20:
+        if step and step % train_batch == 10:
             for dataset in ['train', 'valid', 'test']:
                 steps_per_epoch = None
                 if dataset == 'valid':
@@ -124,16 +124,16 @@ with tf.Session() as sess:
                     # Duplicate M times
                     images = np.tile(images, [FLAGS.M, 1, 1, 1])
                     labels = np.tile(labels, [FLAGS.M])
-                    print (labels)
-                    softmax, logits, rnn_last, init_glip = sess.run([ram.softmax, ram.logits, ram.rnn_last, ram.init_glip],
+                    softmax, logits, rnn_last, init_glip, glims, locs = sess.run([ram.softmax, ram.logits, ram.rnn_last, ram.init_glip, ram.glim, ram.locs],
                                        feed_dict={
                                            ram.img_ph: images,
                                            ram.lbl_ph: labels
                                        })
-                    print (softmax)
                     print (init_glip)
+                    for glim in glims:
+                        print (glim)
+                    print (locs)
                     print (rnn_last)
-                    print (logits)
                     softmax = np.reshape(softmax, [FLAGS.M, -1, 200])
                     softmax = np.mean(softmax, 0)
                     prediction = np.argmax(softmax, 1).flatten()
