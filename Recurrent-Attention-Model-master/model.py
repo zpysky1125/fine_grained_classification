@@ -316,6 +316,10 @@ class RecurrentAttentionModel(object):
         rnn_inputs = [init_glimpse]
         rnn_inputs.extend([0] * num_glimpses)
 
+        self.rnn_input = rnn_inputs
+
+        print rnn_inputs.get_shape()
+
         locs, loc_means = [], []
         glimpses = []
 
