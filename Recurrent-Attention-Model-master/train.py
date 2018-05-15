@@ -130,9 +130,7 @@ with tf.Session() as sess:
                                            ram.lbl_ph: labels
                                        })
                     softmax = np.reshape(softmax, [FLAGS.M, -1, 200])
-                    print (softmax)
                     softmax = np.mean(softmax, 0)
-                    print (softmax)
                     prediction = np.argmax(softmax, 1).flatten()
                     print (prediction)
                     correct_cnt += np.sum(prediction == labels_bak)

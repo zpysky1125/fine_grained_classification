@@ -68,8 +68,8 @@ class GlimpseNetwork(object):
             vgg16_npy_path = path
             print(path)
 
-        self.data_dict = np.load(vgg16_npy_path, encoding='latin1').item()
-        # self.data_dict = None
+        # self.data_dict = np.load(vgg16_npy_path, encoding='latin1').item()
+        self.data_dict = None
 
         print("npy file loaded")
 
@@ -83,9 +83,9 @@ class GlimpseNetwork(object):
         self.conv4_1_weight, self.conv4_1_bias = self.get_conv_var(3, 256, 512, "conv4_1")
         self.conv4_2_weight, self.conv4_2_bias = self.get_conv_var(3, 512, 512, "conv4_2")
         self.conv4_3_weight, self.conv4_3_bias = self.get_conv_var(3, 512, 512, "conv4_3")
-        self.conv5_1_weight, self.conv5_1_bias = self.get_conv_var(3, 512, 1024, "conv5_1")
-        self.conv5_2_weight, self.conv5_2_bias = self.get_conv_var(3, 1024, 1024, "conv5_2")
-        self.conv5_3_weight, self.conv5_3_bias = self.get_conv_var(3, 1024, 1024, "conv5_3")
+        self.conv5_1_weight, self.conv5_1_bias = self.get_conv_var(3, 512, 512, "conv5_1")
+        self.conv5_2_weight, self.conv5_2_bias = self.get_conv_var(3, 512, 512, "conv5_2")
+        self.conv5_3_weight, self.conv5_3_bias = self.get_conv_var(3, 512, 512, "conv5_3")
 
         self.VGG_MEAN = [103.939, 116.779, 123.68]
         self.dropout = 0.5
@@ -227,8 +227,6 @@ class GlimpseNetwork(object):
         filters = self.get_var(initial_value, name, 0, name + "_filters")
         initial_value = tf.truncated_normal([out_channels], .0, .001)
         biases = self.get_var(initial_value, name, 1, name + "_biases")
-        print name
-        print filters.get_shape(), biases.get_shape()
         return filters, biases
 
     def get_fc_var(self, in_size, out_size, name):
