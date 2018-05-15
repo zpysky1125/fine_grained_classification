@@ -69,8 +69,8 @@ class GlimpseNetwork(object):
             vgg16_npy_path = path
             print(path)
 
-        # self.data_dict = np.load(vgg16_npy_path, encoding='latin1').item()
-        self.data_dict = None
+        self.data_dict = np.load(vgg16_npy_path, encoding='latin1').item()
+        # self.data_dict = None
 
         print("npy file loaded")
 
