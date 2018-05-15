@@ -124,16 +124,23 @@ with tf.Session() as sess:
                     # Duplicate M times
                     images = np.tile(images, [FLAGS.M, 1, 1, 1])
                     labels = np.tile(labels, [FLAGS.M])
-                    softmax, logits, rnn_last, init_glip, glims, locs = sess.run([ram.softmax, ram.logits, ram.rnn_last, ram.init_glip, ram.glim, ram.locs],
+                    softmax, logits, rnn_last, init_glip, glims, locs, rnn_out, rnn_state = sess.run([ram.softmax, ram.logits, ram.rnn_last, ram.init_glip, ram.glim, ram.locs, ram.rnn_out, ram.rnn_states],
                                        feed_dict={
                                            ram.img_ph: images,
                                            ram.lbl_ph: labels
                                        })
-                    print (init_glip)
-                    for glim in glims:
-                        print (glim)
-                    print (locs)
-                    print (rnn_last)
+                    # print (init_glip)
+                    # glim = np.transpose(glim, (1, 0, 2))
+                    # for glim in glims:
+                    #     print (glim)
+                    # print (locs)
+                    # print (rnn_last)
+                    rnn_out = np.transpose(rnn_out, (1, 0, 2))
+                    for out in rnn_out:
+                        print (out)
+                        rnn_state = np.transpose(rnn_state, (1, 0, 2))
+                    for state in rnn_state:
+                        print (state)
                     softmax = np.reshape(softmax, [FLAGS.M, -1, 200])
                     softmax = np.mean(softmax, 0)
                     prediction = np.argmax(softmax, 1).flatten()

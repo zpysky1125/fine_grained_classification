@@ -333,7 +333,10 @@ class RecurrentAttentionModel(object):
         self.locs = locs
         self.glim = glimpses
 
-        rnn_outputs, _ = rnn_decoder(rnn_inputs, init_state, cell, loop_function=loop_function)
+        rnn_outputs, rnn_states = rnn_decoder(rnn_inputs, init_state, cell, loop_function=loop_function)
+
+        self.rnn_out = rnn_outputs
+        self.rnn_states = rnn_states
 
         # Time independent baselines
         with tf.variable_scope('Baseline'):
