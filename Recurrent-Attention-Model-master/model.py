@@ -8,12 +8,13 @@ import inspect
 
 
 def _weight_variable(shape):
-    initial = tf.truncated_normal(shape=shape, stddev=.001)
+    initial = tf.truncated_normal(shape=shape, stddev=.01)
     return tf.Variable(initial)
 
 
 def _bias_variable(shape):
-    initial = tf.truncated_normal(shape=shape, stddev=.001)
+    # initial = tf.truncated_normal(shape=shape, stddev=.001)
+    initial = tf.constant(0.0, shape=shape)
     return tf.Variable(initial)
 
 
@@ -308,6 +309,7 @@ class RecurrentAttentionModel(object):
         init_state = cell.zero_state(batch_size, tf.float32)
 
         init_glimpse = glimpse_network(self.img_ph, init_loc)
+        self.init_glip = init_glimpse
         rnn_inputs = [init_glimpse]
         rnn_inputs.extend([0] * num_glimpses)
 
@@ -336,10 +338,12 @@ class RecurrentAttentionModel(object):
 
         # Classification. Take the last step only.
         rnn_last_output = rnn_outputs[-1]
+        self.rnn_last = rnn_last_output
         with tf.variable_scope('Classification'):
             logit_w = _weight_variable((cell.output_size, num_classes))
             logit_b = _bias_variable((num_classes,))
         logits = tf.nn.xw_plus_b(rnn_last_output, logit_w, logit_b)
+        self.logits = logits
         self.prediction = tf.argmax(logits, 1)
         self.softmax = tf.nn.softmax(logits)
 
