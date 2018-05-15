@@ -47,7 +47,7 @@ tf.app.flags.DEFINE_integer("g_size", 128, "Size of theta_g^0.")
 tf.app.flags.DEFINE_integer("l_size", 128, "Size of theta_g^1.")
 tf.app.flags.DEFINE_integer("glimpse_output_size", 512, "Output size of Glimpse Network.")
 tf.app.flags.DEFINE_integer("cell_size", 256, "Size of LSTM cell.")
-tf.app.flags.DEFINE_integer("num_glimpses", 6, "Number of glimpses.")
+tf.app.flags.DEFINE_integer("num_glimpses", 2, "Number of glimpses.")
 tf.app.flags.DEFINE_float("variance", 0.22, "Gaussian variance for Location Network.")
 tf.app.flags.DEFINE_integer("M", 10, "Monte Carlo sampling, see Eq(2).")
 
@@ -101,11 +101,25 @@ with tf.Session() as sess:
 
         # Evaluation
         if step and step % train_batch == 0:
-            for dataset in ['valid', 'test']:
-                steps_per_epoch = valid_batch if dataset == 'valid' else test_batch
+            for dataset in ['train', 'valid', 'test']:
+                steps_per_epoch = None
+                if dataset == 'valid':
+                    steps_per_epoch = valid_batch
+                elif dataset == 'test':
+                    steps_per_epoch = test_batch
+                else:
+                    steps_per_epoch = train_batch
+                # steps_per_epoch = valid_batch if dataset == 'valid' else
                 correct_cnt = 0
                 for test_step in xrange(steps_per_epoch):
-                    images, labels = get_batch(valid_generator, "../CUB_200_2011/CUB_200_2011/images/") if dataset == 'valid' else get_batch(test_generator, "../CUB_200_2011/CUB_200_2011/images/")
+                    images, labels = None, None
+                    if dataset == 'valid':
+                        images, labels = get_batch(valid_generator, "../CUB_200_2011/CUB_200_2011/images/")
+                    elif dataset == 'test':
+                        images, labels = get_batch(test_generator, "../CUB_200_2011/CUB_200_2011/images/")
+                    else:
+                        images, labels = get_batch(train_generator, "../CUB_200_2011/CUB_200_2011/images/")
+                    # images, labels = get_batch(valid_generator, "../CUB_200_2011/CUB_200_2011/images/") if dataset == 'valid' else get_batch(test_generator, "../CUB_200_2011/CUB_200_2011/images/")
                     labels_bak = labels
                     # Duplicate M times
                     images = np.tile(images, [FLAGS.M, 1, 1, 1])
@@ -116,11 +130,23 @@ with tf.Session() as sess:
                                            ram.lbl_ph: labels
                                        })
                     softmax = np.reshape(softmax, [FLAGS.M, -1, 200])
+                    print (softmax)
                     softmax = np.mean(softmax, 0)
+                    print (softmax)
                     prediction = np.argmax(softmax, 1).flatten()
+                    print (prediction)
                     correct_cnt += np.sum(prediction == labels_bak)
-                acc = correct_cnt / valid_image_num if dataset == 'valid' else correct_cnt / test_image_num
+                acc = None
+                if dataset == 'valid':
+                    acc = correct_cnt / valid_image_num
+                elif dataset == 'test':
+                    acc = correct_cnt / test_image_num
+                else:
+                    acc = correct_cnt / train_image_num
+                # acc = correct_cnt / valid_image_num if dataset == 'valid' else correct_cnt / test_image_num
                 if dataset == 'valid':
                     logging.info('valid accuracy = {}'.format(acc))
-                else:
+                elif dataset == 'test':
                     logging.info('test accuracy = {}'.format(acc))
+                else:
+                    logging.info('train accuracy = {}'.format(acc))
