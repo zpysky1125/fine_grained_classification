@@ -34,7 +34,8 @@ class RetinaSensor(object):
         self.pth_size = pth_size
 
     def __call__(self, img_ph, loc):
-        pth = tf.image.extract_glimpse(img_ph, [self.pth_size, self.pth_size], loc)
+        # pth = tf.image.extract_glimpse(img_ph, [self.pth_size, self.pth_size], loc)
+        pth = tf.image.resize_images(img_ph, [64, 64])
         # pth = tf.image.resize_images(pth, [224, 224])
         return pth
 
@@ -97,8 +98,6 @@ class GlimpseNetwork(object):
         rgb = self.retina_sensor(imgs_ph, locs)
         g = self.patch_feature_extractor(rgb, train_mode)
         l = self.loc_feature_extractor(locs)
-        print g.get_shape()
-        print l.get_shape()
         return tf.nn.relu(l + g)
 
         # g = tf.nn.xw_plus_b(tf.nn.relu(tf.nn.xw_plus_b(pths, self.g1_w, self.g1_b)), self.g2_w, self.g2_b)
@@ -116,6 +115,7 @@ class GlimpseNetwork(object):
     # vgg 16 network
     def patch_feature_extractor(self, rgb, train_mode=None):
         red, green, blue = tf.split(axis=3, num_or_size_splits=3, value=rgb)
+        assert rgb.get_shape().as_list()[1:] == [64, 64, 3]
         # assert red.get_shape().as_list()[1:] == [224, 224, 1]
         # assert green.get_shape().as_list()[1:] == [224, 224, 1]
         # assert blue.get_shape().as_list()[1:] == [224, 224, 1]
@@ -312,8 +312,6 @@ class RecurrentAttentionModel(object):
         init_state = cell.zero_state(batch_size, tf.float32)
 
         init_glimpse = glimpse_network(self.img_ph, init_loc)
-        print 'init_glimpse'
-        print init_glimpse.get_shape()
         self.init_glip = init_glimpse
         rnn_inputs = [init_glimpse]
         rnn_inputs.extend([0] * num_glimpses)
@@ -377,7 +375,7 @@ class RecurrentAttentionModel(object):
             # baseline loss
             self.baselines_mse = tf.reduce_mean(tf.square((rewards - baselines)))
             # hybrid loss
-            self.loss = -logllratio + self.xent + self.baselines_mse
+            self.loss = 20.0 * -logllratio + self.xent + self.baselines_mse
             params = tf.trainable_variables()
             gradients = tf.gradients(self.loss, params)
             clipped_gradients, norm = tf.clip_by_global_norm(gradients, max_gradient_norm)

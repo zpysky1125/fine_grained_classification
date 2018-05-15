@@ -34,10 +34,10 @@ logging.getLogger().setLevel(logging.INFO)
 
 # mnist = input_data.read_data_sets('MNIST_data', one_hot=False)
 
-tf.app.flags.DEFINE_float("learning_rate", 1e-1, "Learning rate.")
+tf.app.flags.DEFINE_float("learning_rate", 1e-3, "Learning rate.")
 tf.app.flags.DEFINE_float("learning_rate_decay_factor", 0.99,
                           "Learning rate decays by this much.")
-tf.app.flags.DEFINE_float("min_learning_rate", 1e-2, "Minimum learning rate.")
+tf.app.flags.DEFINE_float("min_learning_rate", 1e-4, "Minimum learning rate.")
 tf.app.flags.DEFINE_float("max_gradient_norm", 5.0, "Clip gradients to this norm.")
 tf.app.flags.DEFINE_integer("batch_size", train_batch_size, "Batch size to use during training.")
 tf.app.flags.DEFINE_integer("num_steps", 100000, "Number of training steps.")
@@ -47,7 +47,7 @@ tf.app.flags.DEFINE_integer("g_size", 128, "Size of theta_g^0.")
 tf.app.flags.DEFINE_integer("l_size", 128, "Size of theta_g^1.")
 tf.app.flags.DEFINE_integer("glimpse_output_size", 512, "Output size of Glimpse Network.")
 tf.app.flags.DEFINE_integer("cell_size", 256, "Size of LSTM cell.")
-tf.app.flags.DEFINE_integer("num_glimpses", 2, "Number of glimpses.")
+tf.app.flags.DEFINE_integer("num_glimpses", 4, "Number of glimpses.")
 tf.app.flags.DEFINE_float("variance", 0.22, "Gaussian variance for Location Network.")
 tf.app.flags.DEFINE_integer("M", 10, "Monte Carlo sampling, see Eq(2).")
 
@@ -100,7 +100,7 @@ with tf.Session() as sess:
                     step, FLAGS.learning_rate, loss, xent, reward, advantage, baselines_mse))
 
         # Evaluation
-        if step and step % train_batch == 10:
+        if step and step % train_batch == 0:
             for dataset in ['train', 'valid', 'test']:
                 steps_per_epoch = None
                 if dataset == 'valid':
@@ -135,16 +135,16 @@ with tf.Session() as sess:
                     #     print (glim)
                     # print (locs)
                     # print (rnn_last)
-                    rnn_out = np.transpose(rnn_out, (1, 0, 2))
-                    for out in rnn_out:
-                        print (out)
-                        rnn_state = np.transpose(rnn_state, (1, 0, 2))
-                    for state in rnn_state:
-                        print (state)
+                    # rnn_out = np.transpose(rnn_out, (1, 0, 2))
+                    # for out in rnn_out:
+                    #     print (out)
+                    # rnn_state = np.transpose(rnn_state, (1, 0, 2))
+                    # for state in rnn_state:
+                    #     print (state)
                     softmax = np.reshape(softmax, [FLAGS.M, -1, 200])
                     softmax = np.mean(softmax, 0)
                     prediction = np.argmax(softmax, 1).flatten()
-                    print (prediction)
+                    logging.info('prediction: {}'.format(prediction))
                     correct_cnt += np.sum(prediction == labels_bak)
                 acc = None
                 if dataset == 'valid':
