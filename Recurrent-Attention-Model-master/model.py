@@ -2,15 +2,18 @@ import tensorflow as tf
 from tensorflow.python.ops.rnn_cell_impl import BasicLSTMCell
 from tensorflow.contrib.legacy_seq2seq.python.ops.seq2seq import rnn_decoder
 from tensorflow.python.ops.distributions.normal import Normal
+import numpy as np
+import os
+import inspect
 
 
 def _weight_variable(shape):
-    initial = tf.truncated_normal(shape=shape, stddev=0.01)
+    initial = tf.truncated_normal(shape=shape, stddev=.001)
     return tf.Variable(initial)
 
 
 def _bias_variable(shape):
-    initial = tf.constant(0.0, shape=shape)
+    initial = tf.truncated_normal(shape=shape, stddev=.001)
     return tf.Variable(initial)
 
 
@@ -36,23 +39,53 @@ class RetinaSensor(object):
 
 
 class GlimpseNetwork(object):
-    def __init__(self, img_size, pth_size, loc_dim, g_size, l_size, output_size):
+    def __init__(self, img_size, pth_size, loc_dim, g_size, l_size, output_size, vgg16_npy_path=None):
         self.retina_sensor = RetinaSensor(img_size, pth_size)
         self.g_size = g_size
         self.l_size = l_size
         self.output_size = output_size
         self.loc_dim = loc_dim
 
+        # location network weight
+
         # # layer 1
         # self.g1_w = _weight_variable((pth_size * pth_size, g_size))
         # self.g1_b = _bias_variable((g_size,))
-        # self.l1_w = _weight_variable((loc_dim, l_size))
-        # self.l1_b = _bias_variable((l_size,))
-        # # layer 2
-        # self.g2_w = _weight_variable((g_size, output_size))
         # self.g2_b = _bias_variable((output_size,))
         # self.l2_w = _weight_variable((l_size, output_size))
         # self.l2_b = _bias_variable((output_size,))
+        self.l1_w = _weight_variable((self.loc_dim, self.l_size))
+        self.l1_b = _bias_variable((self.l_size,))
+        self.l2_w = _weight_variable((self.l_size, self.output_size))
+        self.l2_b = _bias_variable((self.output_size,))
+
+        # path network weight
+
+        if vgg16_npy_path is None:
+            path = inspect.getfile(GlimpseNetwork)
+            path = os.path.abspath(os.path.join(path, os.pardir))
+            path = os.path.join(path, "vgg16.npy")
+            vgg16_npy_path = path
+            print(path)
+
+        self.data_dict = np.load(vgg16_npy_path, encoding='latin1').item()
+        # self.data_dict = None
+
+        print("npy file loaded")
+
+        self.conv1_1_weight, self.conv1_1_bias = self.get_conv_var(3, 3, 64, "conv1_1")
+        self.conv1_2_weight, self.conv1_2_bias = self.get_conv_var(3, 64, 64, "conv1_2")
+        self.conv2_1_weight, self.conv2_1_bias = self.get_conv_var(3, 64, 128, "conv2_1")
+        self.conv2_2_weight, self.conv2_2_bias = self.get_conv_var(3, 128, 128, "conv2_2")
+        self.conv3_1_weight, self.conv3_1_bias = self.get_conv_var(3, 128, 256, "conv3_1")
+        self.conv3_2_weight, self.conv3_2_bias = self.get_conv_var(3, 256, 256, "conv3_2")
+        self.conv3_3_weight, self.conv3_3_bias = self.get_conv_var(3, 256, 256, "conv3_3")
+        self.conv4_1_weight, self.conv4_1_bias = self.get_conv_var(3, 256, 512, "conv4_1")
+        self.conv4_2_weight, self.conv4_2_bias = self.get_conv_var(3, 512, 512, "conv4_2")
+        self.conv4_3_weight, self.conv4_3_bias = self.get_conv_var(3, 512, 512, "conv4_3")
+        self.conv5_1_weight, self.conv5_1_bias = self.get_conv_var(3, 512, 1024, "conv5_1")
+        self.conv5_2_weight, self.conv5_2_bias = self.get_conv_var(3, 1024, 1024, "conv5_2")
+        self.conv5_3_weight, self.conv5_3_bias = self.get_conv_var(3, 1024, 1024, "conv5_3")
 
         self.VGG_MEAN = [103.939, 116.779, 123.68]
         self.dropout = 0.5
@@ -61,20 +94,21 @@ class GlimpseNetwork(object):
         rgb = self.retina_sensor(imgs_ph, locs)
         g = self.patch_feature_extractor(rgb, train_mode)
         l = self.loc_feature_extractor(locs)
-        return tf.nn.relu(l+g)
+        print g.get_shape()
+        print l.get_shape()
+        return tf.nn.relu(l + g)
 
         # g = tf.nn.xw_plus_b(tf.nn.relu(tf.nn.xw_plus_b(pths, self.g1_w, self.g1_b)), self.g2_w, self.g2_b)
         # l = tf.nn.xw_plus_b(tf.nn.relu(tf.nn.xw_plus_b(locs, self.l1_w, self.l1_b)), self.l2_w, self.l2_b)
         # return tf.nn.relu(g + l)
 
     def loc_feature_extractor(self, locs):
-        self.l1_w = _weight_variable((self.loc_dim, self.l_size))
-        self.l1_b = _bias_variable((self.l_size, ))
-        self.l2_w = _weight_variable((self.l_size, self.output_size))
-        self.l2_b = _bias_variable((self.output_size, ))
+        # self.l1_w = _weight_variable((self.loc_dim, self.l_size))
+        # self.l1_b = _bias_variable((self.l_size,))
+        # self.l2_w = _weight_variable((self.l_size, self.output_size))
+        # self.l2_b = _bias_variable((self.output_size,))
         l = tf.nn.xw_plus_b(tf.nn.relu(tf.nn.xw_plus_b(locs, self.l1_w, self.l1_b)), self.l2_w, self.l2_b)
         return l
-
 
     # vgg 16 network
     def patch_feature_extractor(self, rgb, train_mode=None):
@@ -89,32 +123,58 @@ class GlimpseNetwork(object):
         ])
         # assert bgr.get_shape().as_list()[1:] == [224, 224, 3]
 
+        self.conv1_1 = self.conv_layer(bgr, 3, 64, "conv1_1", self.conv1_1_weight, self.conv1_1_bias)
+        self.conv1_2 = self.conv_layer(self.conv1_1, 64, 64, "conv1_2", self.conv1_2_weight, self.conv1_2_bias)
 
-        self.conv1_1 = self.conv_layer(bgr, 3, 64, "conv1_1")
-        self.conv1_2 = self.conv_layer(self.conv1_1, 64, 64, "conv1_2")
         self.pool1 = self.max_pool(self.conv1_2, 'pool1')
 
-        self.conv2_1 = self.conv_layer(self.pool1, 64, 128, "conv2_1")
-        self.conv2_2 = self.conv_layer(self.conv2_1, 128, 128, "conv2_2")
+        self.conv2_1 = self.conv_layer(self.pool1, 64, 128, "conv2_1", self.conv2_1_weight, self.conv2_1_bias)
+        self.conv2_2 = self.conv_layer(self.conv2_1, 128, 128, "conv2_2", self.conv2_2_weight, self.conv2_2_bias)
         self.pool2 = self.max_pool(self.conv2_2, 'pool2')
 
-        self.conv3_1 = self.conv_layer(self.pool2, 128, 256, "conv3_1")
-        self.conv3_2 = self.conv_layer(self.conv3_1, 256, 256, "conv3_2")
-        self.conv3_3 = self.conv_layer(self.conv3_2, 256, 256, "conv3_3")
+        self.conv3_1 = self.conv_layer(self.pool2, 128, 256, "conv3_1", self.conv3_1_weight, self.conv3_1_bias)
+        self.conv3_2 = self.conv_layer(self.conv3_1, 256, 256, "conv3_2", self.conv3_2_weight, self.conv3_2_bias)
+        self.conv3_3 = self.conv_layer(self.conv3_2, 256, 256, "conv3_3", self.conv3_3_weight, self.conv3_3_bias)
         self.pool3 = self.max_pool(self.conv3_3, 'pool3')
 
-        self.conv4_1 = self.conv_layer(self.pool3, 256, 512, "conv4_1")
-        self.conv4_2 = self.conv_layer(self.conv4_1, 512, 512, "conv4_2")
-        self.conv4_3 = self.conv_layer(self.conv4_2, 512, 512, "conv4_3")
+        self.conv4_1 = self.conv_layer(self.pool3, 256, 512, "conv4_1", self.conv4_1_weight, self.conv4_1_bias)
+        self.conv4_2 = self.conv_layer(self.conv4_1, 512, 512, "conv4_2", self.conv4_2_weight, self.conv4_2_bias)
+        self.conv4_3 = self.conv_layer(self.conv4_2, 512, 512, "conv4_3", self.conv4_3_weight, self.conv4_3_bias)
         self.pool4 = self.max_pool(self.conv4_3, 'pool4')
 
-        self.conv5_1 = self.conv_layer(self.pool4, 512, 1024, "conv5_1")
-        self.conv5_2 = self.conv_layer(self.conv5_1, 1024, 1024, "conv5_2")
-        self.conv5_3 = self.conv_layer(self.conv5_2, 1024, 1024, "conv5_3")
-        # self.pool5 = self.max_pool(self.conv5_3, 'pool5')
+        self.conv5_1 = self.conv_layer(self.pool4, 512, 512, "conv5_1", self.conv5_1_weight, self.conv5_1_bias)
+        self.conv5_2 = self.conv_layer(self.conv5_1, 512, 512, "conv5_2", self.conv5_2_weight, self.conv5_2_bias)
+        self.conv5_3 = self.conv_layer(self.conv5_2, 512, 512, "conv5_3", self.conv5_3_weight, self.conv5_3_bias)
+        self.pool5 = self.avg_pool(self.conv5_3, "avg_pool_5")
+        self.g = tf.reshape(self.pool5, [-1, 512])
 
-        self.fc6 = self.avg_pool(self.conv5_3, "fc6")
-        self.fc6 = tf.reshape(self.fc6, [-1, 1024])
+        return self.g
+
+        # self.conv1_1 = self.conv_layer(bgr, 3, 64, "conv1_1")
+        # self.conv1_2 = self.conv_layer(self.conv1_1, 64, 64, "conv1_2")
+        # self.pool1 = self.max_pool(self.conv1_2, 'pool1')
+        #
+        # self.conv2_1 = self.conv_layer(self.pool1, 64, 128, "conv2_1")
+        # self.conv2_2 = self.conv_layer(self.conv2_1, 128, 128, "conv2_2")
+        # self.pool2 = self.max_pool(self.conv2_2, 'pool2')
+        #
+        # self.conv3_1 = self.conv_layer(self.pool2, 128, 256, "conv3_1")
+        # self.conv3_2 = self.conv_layer(self.conv3_1, 256, 256, "conv3_2")
+        # self.conv3_3 = self.conv_layer(self.conv3_2, 256, 256, "conv3_3")
+        # self.pool3 = self.max_pool(self.conv3_3, 'pool3')
+        #
+        # self.conv4_1 = self.conv_layer(self.pool3, 256, 512, "conv4_1")
+        # self.conv4_2 = self.conv_layer(self.conv4_1, 512, 512, "conv4_2")
+        # self.conv4_3 = self.conv_layer(self.conv4_2, 512, 512, "conv4_3")
+        # self.pool4 = self.max_pool(self.conv4_3, 'pool4')
+        #
+        # self.conv5_1 = self.conv_layer(self.pool4, 512, 1024, "conv5_1")
+        # self.conv5_2 = self.conv_layer(self.conv5_1, 1024, 1024, "conv5_2")
+        # self.conv5_3 = self.conv_layer(self.conv5_2, 1024, 1024, "conv5_3")
+        # # self.pool5 = self.max_pool(self.conv5_3, 'pool5')
+        #
+        # self.fc6 = self.avg_pool(self.conv5_3, "fc6")
+        # self.fc6 = tf.reshape(self.fc6, [-1, 1024])
 
         # self.fc6 = self.fc_layer(self.pool3, 25088, 4096, "fc6")  # 25088 = ((224 // (2 ** 5)) ** 2) * 512
         # self.relu6 = tf.nn.relu(self.fc6)
@@ -132,7 +192,6 @@ class GlimpseNetwork(object):
 
         # self.fc8 = self.fc_layer(self.relu7, 4096, 200, "fc8_fine")
         # self.prob = tf.nn.softmax(self.fc8, name="prob")
-        return self.fc6
 
     def avg_pool(self, bottom, name):
         return tf.nn.avg_pool(bottom, ksize=[1, 7, 7, 1], strides=[1, 7, 7, 1], padding='SAME', name=name)
@@ -140,9 +199,17 @@ class GlimpseNetwork(object):
     def max_pool(self, bottom, name):
         return tf.nn.max_pool(bottom, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME', name=name)
 
-    def conv_layer(self, bottom, in_channels, out_channels, name):
+    # def conv_layer(self, bottom, in_channels, out_channels, name):
+        # with tf.variable_scope(name):
+        # filt, conv_biases = self.get_conv_var(3, in_channels, out_channels, name)
+        # conv = tf.nn.conv2d(bottom, filt, [1, 1, 1, 1], padding='SAME')
+        # bias = tf.nn.bias_add(conv, conv_biases)
+        # relu = tf.nn.relu(bias)
+        # return relu
+
+    def conv_layer(self, bottom, in_channels, out_channels, name, filt, conv_biases):
         with tf.variable_scope(name):
-            filt, conv_biases = self.get_conv_var(3, in_channels, out_channels, name)
+            # filt, conv_biases = self.get_conv_var(3, in_channels, out_channels, name)
             conv = tf.nn.conv2d(bottom, filt, [1, 1, 1, 1], padding='SAME')
             bias = tf.nn.bias_add(conv, conv_biases)
             relu = tf.nn.relu(bias)
@@ -157,18 +224,29 @@ class GlimpseNetwork(object):
 
     def get_conv_var(self, filter_size, in_channels, out_channels, name):
         initial_value = tf.truncated_normal([filter_size, filter_size, in_channels, out_channels], 0.0, 0.001)
-        filters = tf.Variable(initial_value, name=name + "_filters")
+        filters = self.get_var(initial_value, name, 0, name + "_filters")
         initial_value = tf.truncated_normal([out_channels], .0, .001)
-        biases = tf.Variable(initial_value, name=name + "_biases")
+        biases = self.get_var(initial_value, name, 1, name + "_biases")
+        print name
+        print filters.get_shape(), biases.get_shape()
         return filters, biases
 
     def get_fc_var(self, in_size, out_size, name):
         initial_value = tf.truncated_normal([in_size, out_size], 0.0, 0.001)
-        weights = tf.Variable(initial_value, name=name + "_weights")
+        weights = self.get_var(initial_value, name, 0, name + "_weights")
         initial_value = tf.truncated_normal([out_size], .0, .001)
-        biases = tf.Variable(initial_value, name=name + "_biases")
+        biases = self.get_var(initial_value, name, 1, name + "_biases")
 
         return weights, biases
+
+    def get_var(self, initial_value, name, idx, var_name):
+        if self.data_dict is not None and name in self.data_dict:
+            value = self.data_dict[name][idx]
+            print name + " get from dict"
+        else:
+            value = initial_value
+            print name + " get from initial"
+        return tf.Variable(value, name=var_name)
 
 
 class LocationNetwork(object):
@@ -221,7 +299,7 @@ class RecurrentAttentionModel(object):
         cell = BasicLSTMCell(cell_size)
 
         with tf.variable_scope('GlimpseNetwork'):
-            glimpse_network = GlimpseNetwork(img_size, pth_size, loc_dim, g_size, l_size, glimpse_output_size)
+            glimpse_network = GlimpseNetwork(img_size, pth_size, loc_dim, g_size, l_size, glimpse_output_size, './vgg16.npy')
         with tf.variable_scope('LocationNetwork'):
             location_network = LocationNetwork(loc_dim=loc_dim, rnn_output_size=cell.output_size, variance=variance,
                                                is_sampling=is_training)
@@ -266,7 +344,6 @@ class RecurrentAttentionModel(object):
         logits = tf.nn.xw_plus_b(rnn_last_output, logit_w, logit_b)
         self.prediction = tf.argmax(logits, 1)
         self.softmax = tf.nn.softmax(logits)
-
 
         if is_training:
             # classification loss
