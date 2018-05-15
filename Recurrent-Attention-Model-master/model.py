@@ -312,13 +312,12 @@ class RecurrentAttentionModel(object):
         init_state = cell.zero_state(batch_size, tf.float32)
 
         init_glimpse = glimpse_network(self.img_ph, init_loc)
+        print 'init_glimpse'
+        print init_glimpse.get_shape()
         self.init_glip = init_glimpse
         rnn_inputs = [init_glimpse]
         rnn_inputs.extend([0] * num_glimpses)
 
-        self.rnn_input = rnn_inputs
-
-        print rnn_inputs.get_shape()
 
         locs, loc_means = [], []
         glimpses = []
