@@ -34,8 +34,8 @@ class RetinaSensor(object):
         self.pth_size = pth_size
 
     def __call__(self, img_ph, loc):
-        # pth = tf.image.extract_glimpse(img_ph, [self.pth_size, self.pth_size], loc)
-        pth = tf.image.resize_images(img_ph, [self.pth_size, self.pth_size])
+        pth = tf.image.extract_glimpse(img_ph, [self.pth_size, self.pth_size], loc)
+        # pth = tf.image.resize_images(img_ph, [self.pth_size, self.pth_size])
         # pth = tf.image.resize_images(pth, [224, 224])
         return pth
         # return tf.reshape(pth, [tf.shape(loc)[0], self.pth_size * self.pth_size * 3])
@@ -99,9 +99,9 @@ class GlimpseNetwork(object):
         rgb = self.retina_sensor(imgs_ph, locs)
         # g = self.patch_feature_extractor(rgb, train_mode)
         g = self.patch_feature_extractor(rgb)
-        return tf.nn.relu(g)
-        # l = self.loc_feature_extractor(locs)
-        # return tf.nn.relu(l + g)
+        # return tf.nn.relu(g)
+        l = self.loc_feature_extractor(locs)
+        return tf.nn.relu(l + g)
 
 
         # g = tf.nn.xw_plus_b(tf.nn.relu(tf.nn.xw_plus_b(pths, self.g1_w, self.g1_b)), self.g2_w, self.g2_b)
@@ -299,14 +299,14 @@ class RecurrentAttentionModel(object):
 
         self.global_step = tf.Variable(0, trainable=False)
 
-        self.learning_rate = learning_rate
+        # self.learning_rate = learning_rate
 
-        # self.learning_rate = tf.maximum(tf.train.exponential_decay(
-        #     learning_rate, self.global_step,
-        #     training_steps_per_epoch,
-        #     learning_rate_decay_factor,
-        #     staircase=True),
-        #     min_learning_rate)
+        self.learning_rate = tf.maximum(tf.train.exponential_decay(
+            learning_rate, self.global_step,
+            training_steps_per_epoch,
+            learning_rate_decay_factor,
+            staircase=True),
+            min_learning_rate)
 
         cell = BasicLSTMCell(cell_size)
 

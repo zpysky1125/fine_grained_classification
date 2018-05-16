@@ -152,7 +152,7 @@ with tf.Session() as sess:
                     softmax = np.reshape(softmax, [FLAGS.M, -1, 200])
                     softmax = np.mean(softmax, 0)
                     prediction = np.argmax(softmax, 1).flatten()
-                    logging.info('prediction: {}'.format(prediction))
+                    # logging.info('prediction: {}'.format(prediction))
                     correct_cnt += np.sum(prediction == labels_bak)
                 acc = None
                 if dataset == 'valid':
