@@ -45,7 +45,7 @@ tf.app.flags.DEFINE_integer("num_steps", 100000, "Number of training steps.")
 tf.app.flags.DEFINE_integer("patch_window_size", 64, "Size of glimpse patch window.")
 tf.app.flags.DEFINE_integer("g_size", 1024, "Size of theta_g^0.")
 tf.app.flags.DEFINE_integer("l_size", 1024, "Size of theta_g^1.")
-tf.app.flags.DEFINE_integer("glimpse_output_size", 256, "Output size of Glimpse Network.")
+tf.app.flags.DEFINE_integer("glimpse_output_size", 512, "Output size of Glimpse Network.")
 tf.app.flags.DEFINE_integer("cell_size", 256, "Size of LSTM cell.")
 tf.app.flags.DEFINE_integer("num_glimpses", 4, "Number of glimpses.")
 tf.app.flags.DEFINE_float("variance", 0.22, "Gaussian variance for Location Network.")
@@ -88,6 +88,14 @@ with tf.Session() as sess:
 
         # output_feed = [ram.train_op, ram.loss, ram.xent, ram.reward, ram.advantage, ram.baselines_mse,
         #                ram.learning_rate]
+
+        # variables_names = [v.name for v in tf.trainable_variables()]
+        # values = sess.run(variables_names)
+        # for k, v in zip(variables_names, values):
+        #     print ("Variable: ", k)
+        #     print ("Shape: ", v.shape)
+        #     print (v)
+
         output_feed = [ram.train_op, ram.loss, ram.xent, ram.reward, ram.advantage, ram.baselines_mse]
         _, loss, xent, reward, advantage, baselines_mse = sess.run(output_feed,
                                                                                   feed_dict={
