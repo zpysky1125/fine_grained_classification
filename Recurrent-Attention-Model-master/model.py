@@ -35,9 +35,10 @@ class RetinaSensor(object):
 
     def __call__(self, img_ph, loc):
         # pth = tf.image.extract_glimpse(img_ph, [self.pth_size, self.pth_size], loc)
-        pth = tf.image.resize_images(img_ph, [64, 64])
+        pth = tf.image.resize_images(img_ph, [self.pth_size, self.pth_size])
         # pth = tf.image.resize_images(pth, [224, 224])
-        return pth
+        return tf.reshape(pth, [tf.shape(loc)[0], self.pth_size * self.pth_size * 3])
+        # return pth
 
 
 class GlimpseNetwork(object):
@@ -51,11 +52,10 @@ class GlimpseNetwork(object):
         # location network weight
 
         # # layer 1
-        # self.g1_w = _weight_variable((pth_size * pth_size, g_size))
-        # self.g1_b = _bias_variable((g_size,))
-        # self.g2_b = _bias_variable((output_size,))
-        # self.l2_w = _weight_variable((l_size, output_size))
-        # self.l2_b = _bias_variable((output_size,))
+        self.g1_w = _weight_variable((pth_size * pth_size * 3, g_size))
+        self.g1_b = _bias_variable((g_size,))
+        self.g2_w = _weight_variable((g_size, output_size))
+        self.g2_b = _bias_variable((output_size,))
         self.l1_w = _weight_variable((self.loc_dim, self.l_size))
         self.l1_b = _bias_variable((self.l_size,))
         self.l2_w = _weight_variable((self.l_size, self.output_size))
@@ -63,40 +63,41 @@ class GlimpseNetwork(object):
 
         # path network weight
 
-        if vgg16_npy_path is None:
-            path = inspect.getfile(GlimpseNetwork)
-            path = os.path.abspath(os.path.join(path, os.pardir))
-            path = os.path.join(path, "vgg16.npy")
-            vgg16_npy_path = path
-            print(path)
+        # if vgg16_npy_path is None:
+        #     path = inspect.getfile(GlimpseNetwork)
+        #     path = os.path.abspath(os.path.join(path, os.pardir))
+        #     path = os.path.join(path, "vgg16.npy")
+        #     vgg16_npy_path = path
+        #     print(path)
 
-        self.data_dict = np.load(vgg16_npy_path, encoding='latin1').item()
-        # self.data_dict = None
-
-        print("npy file loaded")
-
-        tf.set_random_seed(1)
-
-        self.conv1_1_weight, self.conv1_1_bias = self.get_conv_var(3, 3, 64, "conv1_1")
-        self.conv1_2_weight, self.conv1_2_bias = self.get_conv_var(3, 64, 64, "conv1_2")
-        self.conv2_1_weight, self.conv2_1_bias = self.get_conv_var(3, 64, 128, "conv2_1")
-        self.conv2_2_weight, self.conv2_2_bias = self.get_conv_var(3, 128, 128, "conv2_2")
-        self.conv3_1_weight, self.conv3_1_bias = self.get_conv_var(3, 128, 256, "conv3_1")
-        self.conv3_2_weight, self.conv3_2_bias = self.get_conv_var(3, 256, 256, "conv3_2")
-        self.conv3_3_weight, self.conv3_3_bias = self.get_conv_var(3, 256, 256, "conv3_3")
-        self.conv4_1_weight, self.conv4_1_bias = self.get_conv_var(3, 256, 512, "conv4_1")
-        self.conv4_2_weight, self.conv4_2_bias = self.get_conv_var(3, 512, 512, "conv4_2")
-        self.conv4_3_weight, self.conv4_3_bias = self.get_conv_var(3, 512, 512, "conv4_3")
-        self.conv5_1_weight, self.conv5_1_bias = self.get_conv_var(3, 512, 512, "conv5_1")
-        self.conv5_2_weight, self.conv5_2_bias = self.get_conv_var(3, 512, 512, "conv5_2")
-        self.conv5_3_weight, self.conv5_3_bias = self.get_conv_var(3, 512, 512, "conv5_3")
-
-        self.VGG_MEAN = [103.939, 116.779, 123.68]
-        self.dropout = 0.5
+        # self.data_dict = np.load(vgg16_npy_path, encoding='latin1').item()
+        # # self.data_dict = None
+        #
+        # print("npy file loaded")
+        #
+        # tf.set_random_seed(1)
+        #
+        # self.conv1_1_weight, self.conv1_1_bias = self.get_conv_var(3, 3, 64, "conv1_1")
+        # self.conv1_2_weight, self.conv1_2_bias = self.get_conv_var(3, 64, 64, "conv1_2")
+        # self.conv2_1_weight, self.conv2_1_bias = self.get_conv_var(3, 64, 128, "conv2_1")
+        # self.conv2_2_weight, self.conv2_2_bias = self.get_conv_var(3, 128, 128, "conv2_2")
+        # self.conv3_1_weight, self.conv3_1_bias = self.get_conv_var(3, 128, 256, "conv3_1")
+        # self.conv3_2_weight, self.conv3_2_bias = self.get_conv_var(3, 256, 256, "conv3_2")
+        # self.conv3_3_weight, self.conv3_3_bias = self.get_conv_var(3, 256, 256, "conv3_3")
+        # self.conv4_1_weight, self.conv4_1_bias = self.get_conv_var(3, 256, 512, "conv4_1")
+        # self.conv4_2_weight, self.conv4_2_bias = self.get_conv_var(3, 512, 512, "conv4_2")
+        # self.conv4_3_weight, self.conv4_3_bias = self.get_conv_var(3, 512, 512, "conv4_3")
+        # self.conv5_1_weight, self.conv5_1_bias = self.get_conv_var(3, 512, 512, "conv5_1")
+        # self.conv5_2_weight, self.conv5_2_bias = self.get_conv_var(3, 512, 512, "conv5_2")
+        # self.conv5_3_weight, self.conv5_3_bias = self.get_conv_var(3, 512, 512, "conv5_3")
+        #
+        # self.VGG_MEAN = [103.939, 116.779, 123.68]
+        # self.dropout = 0.5
 
     def __call__(self, imgs_ph, locs, train_mode=None):
         rgb = self.retina_sensor(imgs_ph, locs)
-        g = self.patch_feature_extractor(rgb, train_mode)
+        # g = self.patch_feature_extractor(rgb, train_mode)
+        g = self.patch_feature_extractor_2(rgb)
         l = self.loc_feature_extractor(locs)
         return tf.nn.relu(l + g)
 
@@ -111,6 +112,12 @@ class GlimpseNetwork(object):
         # self.l2_b = _bias_variable((self.output_size,))
         l = tf.nn.xw_plus_b(tf.nn.relu(tf.nn.xw_plus_b(locs, self.l1_w, self.l1_b)), self.l2_w, self.l2_b)
         return l
+
+
+    def patch_feature_extractor_2(self, pths):
+        g = tf.nn.xw_plus_b(tf.nn.relu(tf.nn.xw_plus_b(pths, self.g1_w, self.g1_b)), self.g2_w, self.g2_b)
+        return g
+
 
     # vgg 16 network
     def patch_feature_extractor(self, rgb, train_mode=None):
@@ -375,7 +382,7 @@ class RecurrentAttentionModel(object):
             # baseline loss
             self.baselines_mse = tf.reduce_mean(tf.square((rewards - baselines)))
             # hybrid loss
-            self.loss = 20.0 * -logllratio + self.xent + self.baselines_mse
+            self.loss = -logllratio + self.xent + self.baselines_mse
             params = tf.trainable_variables()
             gradients = tf.gradients(self.loss, params)
             clipped_gradients, norm = tf.clip_by_global_norm(gradients, max_gradient_norm)

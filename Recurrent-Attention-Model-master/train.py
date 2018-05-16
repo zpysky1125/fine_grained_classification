@@ -18,7 +18,7 @@ from input_generator import get_batch, BirdClassificationGenerator
 train_image_num = 5094
 valid_image_num = 900
 test_image_num = 5794
-train_batch_size = valid_batch_size = test_batch_size = 8
+train_batch_size = valid_batch_size = test_batch_size = 16
 
 train_batch = train_image_num // train_batch_size if train_image_num % train_batch_size == 0 else train_image_num // train_batch_size + 1
 valid_batch = valid_image_num // valid_batch_size if valid_image_num % valid_batch_size == 0 else valid_image_num // valid_batch_size + 1
@@ -43,9 +43,9 @@ tf.app.flags.DEFINE_integer("batch_size", train_batch_size, "Batch size to use d
 tf.app.flags.DEFINE_integer("num_steps", 100000, "Number of training steps.")
 
 tf.app.flags.DEFINE_integer("patch_window_size", 64, "Size of glimpse patch window.")
-tf.app.flags.DEFINE_integer("g_size", 128, "Size of theta_g^0.")
-tf.app.flags.DEFINE_integer("l_size", 128, "Size of theta_g^1.")
-tf.app.flags.DEFINE_integer("glimpse_output_size", 512, "Output size of Glimpse Network.")
+tf.app.flags.DEFINE_integer("g_size", 1024, "Size of theta_g^0.")
+tf.app.flags.DEFINE_integer("l_size", 1024, "Size of theta_g^1.")
+tf.app.flags.DEFINE_integer("glimpse_output_size", 256, "Output size of Glimpse Network.")
 tf.app.flags.DEFINE_integer("cell_size", 256, "Size of LSTM cell.")
 tf.app.flags.DEFINE_integer("num_glimpses", 4, "Number of glimpses.")
 tf.app.flags.DEFINE_float("variance", 0.22, "Gaussian variance for Location Network.")
