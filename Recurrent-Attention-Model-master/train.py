@@ -96,8 +96,8 @@ with tf.Session() as sess:
         #     print ("Shape: ", v.shape)
         #     print (v)
 
-        output_feed = [ram.train_op, ram.loss, ram.xent, ram.reward, ram.advantage, ram.baselines_mse]
-        _, loss, xent, reward, advantage, baselines_mse = sess.run(output_feed,
+        output_feed = [ram.train_op, ram.loss, ram.xent, ram.reward, ram.advantage, ram.baselines_mse, ram.learning_rate]
+        _, loss, xent, reward, advantage, baselines_mse, learning_rate = sess.run(output_feed,
                                                                                   feed_dict={
                                                                                       ram.img_ph: images,
                                                                                       ram.lbl_ph: labels
@@ -105,7 +105,7 @@ with tf.Session() as sess:
         if step and step % 100 == 0:
             logging.info(
                 'step {}: lr = {:3.6f}\tloss = {:3.4f}\txent = {:3.4f}\treward = {:3.4f}\tadvantage = {:3.4f}\tbaselines_mse = {:3.4f}'.format(
-                    step, ram.learning_rate, loss, xent, reward, advantage, baselines_mse))
+                    step, learning_rate, loss, xent, reward, advantage, baselines_mse))
 
         # Evaluation
         if step and step % train_batch == 0:
