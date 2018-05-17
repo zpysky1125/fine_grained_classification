@@ -34,10 +34,10 @@ logging.getLogger().setLevel(logging.INFO)
 
 # mnist = input_data.read_data_sets('MNIST_data', one_hot=False)
 
-tf.app.flags.DEFINE_float("learning_rate", 1e-3, "Learning rate.")
-tf.app.flags.DEFINE_float("learning_rate_decay_factor", 0.95,
+tf.app.flags.DEFINE_float("learning_rate", 1e-5, "Learning rate.")
+tf.app.flags.DEFINE_float("learning_rate_decay_factor", 0.97,
                           "Learning rate decays by this much.")
-tf.app.flags.DEFINE_float("min_learning_rate", 1e-4, "Minimum learning rate.")
+tf.app.flags.DEFINE_float("min_learning_rate", 1e-6, "Minimum learning rate.")
 tf.app.flags.DEFINE_float("max_gradient_norm", 5.0, "Clip gradients to this norm.")
 tf.app.flags.DEFINE_integer("batch_size", train_batch_size, "Batch size to use during training.")
 tf.app.flags.DEFINE_integer("num_steps", 100000, "Number of training steps.")
@@ -105,7 +105,7 @@ with tf.Session() as sess:
         if step and step % 100 == 0:
             logging.info(
                 'step {}: lr = {:3.6f}\tloss = {:3.4f}\txent = {:3.4f}\treward = {:3.4f}\tadvantage = {:3.4f}\tbaselines_mse = {:3.4f}'.format(
-                    step, FLAGS.learning_rate, loss, xent, reward, advantage, baselines_mse))
+                    step, ram.learning_rate, loss, xent, reward, advantage, baselines_mse))
 
         # Evaluation
         if step and step % train_batch == 0:

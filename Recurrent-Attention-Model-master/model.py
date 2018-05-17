@@ -94,6 +94,9 @@ class GlimpseNetwork(object):
         self.conv5_1_weight, self.conv5_1_bias = self.get_conv_var(3, 512, 512, "conv5_1")
         self.conv5_2_weight, self.conv5_2_bias = self.get_conv_var(3, 512, 512, "conv5_2")
         self.conv5_3_weight, self.conv5_3_bias = self.get_conv_var(3, 512, 512, "conv5_3")
+        self.fc6_weight, self.fc6_bias = self.get_fc_var(25088, 4096, "fc6")
+        self.fc7_weight, self.fc7_bias = self.get_fc_var(4096, 4096, "fc7")
+        self.fc8_weight, self.fc8_bias = self.get_fc_var(4096, 1000, "fc8")
 
         self.VGG_MEAN = [103.939, 116.779, 123.68]
         self.dropout = 0.5
@@ -119,13 +122,8 @@ class GlimpseNetwork(object):
         l = tf.nn.xw_plus_b(tf.nn.relu(tf.nn.xw_plus_b(locs, self.l1_w, self.l1_b)), self.l2_w, self.l2_b)
         return l
 
-
-    def patch_feature_extractor_2(self, pths):
-        g = tf.nn.xw_plus_b(tf.nn.relu(tf.nn.xw_plus_b(pths, self.g1_w, self.g1_b)), self.g2_w, self.g2_b)
-        return g
-
-
-    # vgg 16 network
+    # vgg 16 extractor
+    # input size: 64 64   output size: 512
     def patch_feature_extractor(self, rgb, train_mode=None):
         red, green, blue = tf.split(axis=3, num_or_size_splits=3, value=rgb)
         assert rgb.get_shape().as_list()[1:] == [64, 64, 3]
@@ -210,13 +208,64 @@ class GlimpseNetwork(object):
         # self.fc8 = self.fc_layer(self.relu7, 4096, 200, "fc8_fine")
         # self.prob = tf.nn.softmax(self.fc8, name="prob")
 
+    # vgg 16 extractor
+    # input size: 224 224   output size: 4096
+    def patch_feature_extractor_2(self, rgb, train_mode=None):
+        red, green, blue = tf.split(axis=3, num_or_size_splits=3, value=rgb)
+        assert rgb.get_shape().as_list()[1:] == [64, 64, 3]
+        # assert red.get_shape().as_list()[1:] == [224, 224, 1]
+        # assert green.get_shape().as_list()[1:] == [224, 224, 1]
+        # assert blue.get_shape().as_list()[1:] == [224, 224, 1]
+        bgr = tf.concat(axis=3, values=[
+            blue - self.VGG_MEAN[0],
+            green - self.VGG_MEAN[1],
+            red - self.VGG_MEAN[2],
+        ])
+        # assert bgr.get_shape().as_list()[1:] == [224, 224, 3]
+
+        self.conv1_1 = self.conv_layer(bgr, 3, 64, "conv1_1", self.conv1_1_weight, self.conv1_1_bias)
+        self.conv1_2 = self.conv_layer(self.conv1_1, 64, 64, "conv1_2", self.conv1_2_weight, self.conv1_2_bias)
+
+        self.pool1 = self.max_pool(self.conv1_2, 'pool1')
+
+        self.conv2_1 = self.conv_layer(self.pool1, 64, 128, "conv2_1", self.conv2_1_weight, self.conv2_1_bias)
+        self.conv2_2 = self.conv_layer(self.conv2_1, 128, 128, "conv2_2", self.conv2_2_weight, self.conv2_2_bias)
+        self.pool2 = self.max_pool(self.conv2_2, 'pool2')
+
+        self.conv3_1 = self.conv_layer(self.pool2, 128, 256, "conv3_1", self.conv3_1_weight, self.conv3_1_bias)
+        self.conv3_2 = self.conv_layer(self.conv3_1, 256, 256, "conv3_2", self.conv3_2_weight, self.conv3_2_bias)
+        self.conv3_3 = self.conv_layer(self.conv3_2, 256, 256, "conv3_3", self.conv3_3_weight, self.conv3_3_bias)
+        self.pool3 = self.max_pool(self.conv3_3, 'pool3')
+
+        self.conv4_1 = self.conv_layer(self.pool3, 256, 512, "conv4_1", self.conv4_1_weight, self.conv4_1_bias)
+        self.conv4_2 = self.conv_layer(self.conv4_1, 512, 512, "conv4_2", self.conv4_2_weight, self.conv4_2_bias)
+        self.conv4_3 = self.conv_layer(self.conv4_2, 512, 512, "conv4_3", self.conv4_3_weight, self.conv4_3_bias)
+        self.pool4 = self.max_pool(self.conv4_3, 'pool4')
+
+        self.conv5_1 = self.conv_layer(self.pool4, 512, 512, "conv5_1", self.conv5_1_weight, self.conv5_1_bias)
+        self.conv5_2 = self.conv_layer(self.conv5_1, 512, 512, "conv5_2", self.conv5_2_weight, self.conv5_2_bias)
+        self.conv5_3 = self.conv_layer(self.conv5_2, 512, 512, "conv5_3", self.conv5_3_weight, self.conv5_3_bias)
+        self.pool5 = self.max_pool(self.conv5_3, 'pool5')
+
+        self.fc6 = self.fc_layer(self.pool5, "fc6", 25088, 4096, self.fc6_weight, self.fc6_bias)
+        assert self.fc6.get_shape().as_list()[1:] == [4096]
+        self.relu6 = tf.nn.relu(self.fc6)
+
+        self.fc7 = self.fc_layer(self.relu6, "fc7", 4096, 4096, self.fc7_weight, self.fc7_bias)
+        self.relu7 = tf.nn.relu(self.fc7)
+
+        # self.fc8 = self.fc_layer(self.relu7, "fc8", 4096, 1000, self.fc8_weight, self.fc8_bias)
+        # self.prob = tf.nn.softmax(self.fc8, name="prob")
+
+        return self.relu7
+
     def avg_pool(self, bottom, name):
         return tf.nn.avg_pool(bottom, ksize=[1, 7, 7, 1], strides=[1, 7, 7, 1], padding='SAME', name=name)
 
     def max_pool(self, bottom, name):
         return tf.nn.max_pool(bottom, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME', name=name)
 
-    # def conv_layer(self, bottom, in_channels, out_channels, name):
+        # def conv_layer(self, bottom, in_channels, out_channels, name):
         # with tf.variable_scope(name):
         # filt, conv_biases = self.get_conv_var(3, in_channels, out_channels, name)
         # conv = tf.nn.conv2d(bottom, filt, [1, 1, 1, 1], padding='SAME')
@@ -232,9 +281,9 @@ class GlimpseNetwork(object):
             relu = tf.nn.relu(bias)
             return relu
 
-    def fc_layer(self, bottom, in_size, out_size, name):
+    def fc_layer(self, bottom, in_size, out_size, name, weights, biases):
         with tf.variable_scope(name):
-            weights, biases = self.get_fc_var(in_size, out_size, name)
+            # weights, biases = self.get_fc_var(in_size, out_size, name)
             x = tf.reshape(bottom, [-1, in_size])
             fc = tf.nn.bias_add(tf.matmul(x, weights), biases)
             return fc
@@ -314,7 +363,8 @@ class RecurrentAttentionModel(object):
         cell = BasicLSTMCell(cell_size)
 
         with tf.variable_scope('GlimpseNetwork'):
-            glimpse_network = GlimpseNetwork(img_size, pth_size, loc_dim, g_size, l_size, glimpse_output_size, './vgg16.npy')
+            glimpse_network = GlimpseNetwork(img_size, pth_size, loc_dim, g_size, l_size, glimpse_output_size,
+                                             './vgg16.npy')
         with tf.variable_scope('LocationNetwork'):
             location_network = LocationNetwork(loc_dim=loc_dim, rnn_output_size=cell.output_size, variance=variance,
                                                is_sampling=is_training)
@@ -328,7 +378,6 @@ class RecurrentAttentionModel(object):
         self.init_glip = init_glimpse
         rnn_inputs = [init_glimpse]
         rnn_inputs.extend([0] * num_glimpses)
-
 
         locs, loc_means = [], []
         glimpses = []
@@ -392,7 +441,9 @@ class RecurrentAttentionModel(object):
             params = tf.trainable_variables()
             gradients = tf.gradients(self.loss, params)
             clipped_gradients, norm = tf.clip_by_global_norm(gradients, max_gradient_norm)
-            self.train_op = tf.train.AdamOptimizer(self.learning_rate).apply_gradients(
+            self.train_op = tf.train.MomentumOptimizer(self.learning_rate, 0.9).apply_gradients(
                 zip(clipped_gradients, params), global_step=self.global_step)
+            # self.train_op = tf.train.AdamOptimizer(self.learning_rate).apply_gradients(
+            #     zip(clipped_gradients, params), global_step=self.global_step)
 
         self.saver = tf.train.Saver(tf.global_variables(), max_to_keep=99999999)
