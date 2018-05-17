@@ -33,8 +33,11 @@ class RetinaSensor(object):
         self.img_size = img_size
         self.pth_size = pth_size
 
-    def __call__(self, img_ph, loc):
-        pth = tf.image.extract_glimpse(img_ph, [self.pth_size, self.pth_size], loc)
+    def __call__(self, img_ph, loc, init=False):
+        if init:
+            pth = tf.image.resize_images(img_ph, [self.pth_size, self.pth_size])
+        else:
+            pth = tf.image.extract_glimpse(img_ph, [self.pth_size, self.pth_size], loc)
         # pth = tf.image.resize_images(img_ph, [self.pth_size, self.pth_size])
         # pth = tf.image.resize_images(pth, [224, 224])
         return pth
@@ -95,8 +98,8 @@ class GlimpseNetwork(object):
         self.VGG_MEAN = [103.939, 116.779, 123.68]
         self.dropout = 0.5
 
-    def __call__(self, imgs_ph, locs, train_mode=None):
-        rgb = self.retina_sensor(imgs_ph, locs)
+    def __call__(self, imgs_ph, locs, train_mode=None, init=False):
+        rgb = self.retina_sensor(imgs_ph, locs, init)
         # g = self.patch_feature_extractor(rgb, train_mode)
         g = self.patch_feature_extractor(rgb)
         # return tf.nn.relu(g)
@@ -321,7 +324,7 @@ class RecurrentAttentionModel(object):
         init_loc = tf.random_uniform((batch_size, loc_dim), minval=-1, maxval=1)
         init_state = cell.zero_state(batch_size, tf.float32)
 
-        init_glimpse = glimpse_network(self.img_ph, init_loc)
+        init_glimpse = glimpse_network(self.img_ph, init_loc, init=True)
         self.init_glip = init_glimpse
         rnn_inputs = [init_glimpse]
         rnn_inputs.extend([0] * num_glimpses)

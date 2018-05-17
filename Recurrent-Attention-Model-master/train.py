@@ -35,7 +35,7 @@ logging.getLogger().setLevel(logging.INFO)
 # mnist = input_data.read_data_sets('MNIST_data', one_hot=False)
 
 tf.app.flags.DEFINE_float("learning_rate", 1e-3, "Learning rate.")
-tf.app.flags.DEFINE_float("learning_rate_decay_factor", 0.99,
+tf.app.flags.DEFINE_float("learning_rate_decay_factor", 0.95,
                           "Learning rate decays by this much.")
 tf.app.flags.DEFINE_float("min_learning_rate", 1e-4, "Minimum learning rate.")
 tf.app.flags.DEFINE_float("max_gradient_norm", 5.0, "Clip gradients to this norm.")
