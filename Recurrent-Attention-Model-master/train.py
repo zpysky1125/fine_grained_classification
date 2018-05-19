@@ -4,7 +4,6 @@ from __future__ import print_function
 
 import tensorflow as tf
 from model import RecurrentAttentionModel
-from tensorflow.examples.tutorials.mnist import input_data
 import logging
 import numpy as np
 
@@ -127,7 +126,6 @@ with tf.Session() as sess:
                         images, labels = get_batch(test_generator, "../CUB_200_2011/CUB_200_2011/images/")
                     else:
                         images, labels = get_batch(train_generator, "../CUB_200_2011/CUB_200_2011/images/")
-                    # images, labels = get_batch(valid_generator, "../CUB_200_2011/CUB_200_2011/images/") if dataset == 'valid' else get_batch(test_generator, "../CUB_200_2011/CUB_200_2011/images/")
                     labels_bak = labels
                     # Duplicate M times
                     images = np.tile(images, [FLAGS.M, 1, 1, 1])
@@ -137,18 +135,6 @@ with tf.Session() as sess:
                                            ram.img_ph: images,
                                            ram.lbl_ph: labels
                                        })
-                    # print (init_glip)
-                    # glim = np.transpose(glim, (1, 0, 2))
-                    # for glim in glims:
-                    #     print (glim)
-                    # print (locs)
-                    # print (rnn_last)
-                    # rnn_out = np.transpose(rnn_out, (1, 0, 2))
-                    # for out in rnn_out:
-                    #     print (out)
-                    # rnn_state = np.transpose(rnn_state, (1, 0, 2))
-                    # for state in rnn_state:
-                    #     print (state)
                     softmax = np.reshape(softmax, [FLAGS.M, -1, 200])
                     softmax = np.mean(softmax, 0)
                     prediction = np.argmax(softmax, 1).flatten()
