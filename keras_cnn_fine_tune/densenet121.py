@@ -9,21 +9,29 @@ from keras.layers.normalization import BatchNormalization
 from keras.models import Model
 from custom_layers.scale_layer import Scale
 import tensorflow as tf
-from tfRecord import get_batch, get_shuffle_batch
+import numpy as np
+import sys
+sys.path.append('../')
+from input_generator import get_batch, BirdClassificationGenerator
 
 train_image_num = 5094
 valid_image_num = 900
 test_image_num = 5794
-train_batch_size = 16
-valid_batch_size = 16
-test_batch_size = 16
+train_batch_size = 64
+valid_batch_size = 64
+test_batch_size = 64
 
-img_rows, img_cols = 224, 224  # Resolution of inputs
-channel = 3
-num_classes = 200
+train_batch = train_image_num // train_batch_size if train_image_num % train_batch_size == 0 else train_image_num // train_batch_size + 1
+valid_batch = valid_image_num // valid_batch_size if valid_image_num % valid_batch_size == 0 else valid_image_num // valid_batch_size + 1
+test_batch = test_image_num // test_batch_size if test_image_num % test_batch_size == 0 else test_image_num // test_batch_size + 1
 
 train_losses, valid_losses, test_losses = [], [], []
 train_accuracys, valid_accuracys, test_accuracys = [], [], []
+
+bird_classification_generator = BirdClassificationGenerator("../CUB_200_2011/CUB_200_2011/")
+train_generator = bird_classification_generator.train_generator(train_batch_size)
+valid_generator = bird_classification_generator.valid_generator(valid_batch_size)
+test_generator = bird_classification_generator.test_generator(test_batch_size)
 
 
 def densenet121_model(img_rows, img_cols, color_type=1, nb_dense_block=4, growth_rate=32, nb_filter=64, reduction=0.5,
@@ -70,6 +78,7 @@ def densenet121_model(img_rows, img_cols, color_type=1, nb_dense_block=4, growth
     x = Scale(axis=concat_axis, name='conv' + str(final_stage) + '_blk_scale')(x)
     x = Activation('relu', name='relu' + str(final_stage) + '_blk')(x)
 
+
     x_fc = GlobalAveragePooling2D(name='pool' + str(final_stage))(x)
     x_fc = Dense(1000, name='fc6')(x_fc)
     x_fc = Activation('softmax', name='prob')(x_fc)
@@ -88,6 +97,9 @@ def densenet121_model(img_rows, img_cols, color_type=1, nb_dense_block=4, growth
     x_newfc = Activation('softmax', name='prob')(x_newfc)
 
     model = Model(img_input, x_newfc)
+
+    for layer in model.layers[:-4]:
+        layer.trainable = False
 
     # Learning rate is changed to 0.001
     sgd = SGD(lr=1e-4, decay=1e-6, momentum=0.9, nesterov=True)
@@ -193,97 +205,86 @@ def dense_block(x, stage, nb_layers, nb_filter, growth_rate, dropout_rate=None, 
 
 if __name__ == '__main__':
 
-    train_image_batch, train_label_batch = get_shuffle_batch("train.tfrecords", train_batch_size)
-    test_train_image_batch, test_train_label_batch = get_batch("train.tfrecords", train_batch_size)
-    valid_image_batch, valid_label_batch = get_batch("valid.tfrecords", valid_batch_size)
-    test_image_batch, test_label_batch = get_batch("test.tfrecords", test_batch_size)
-
-    model = densenet121_model(img_rows=img_rows, img_cols=img_cols, color_type=channel, num_classes=num_classes)
+    model = densenet121_model(img_rows=224, img_cols=224, color_type=3, num_classes=200)
 
     with tf.Session() as sess:
-        coord = tf.train.Coordinator()
-        threads = tf.train.start_queue_runners(sess=sess, coord=coord)
         sess.run(tf.local_variables_initializer())
         sess.run(tf.global_variables_initializer())
-        try:
-            train_batch = int(train_image_num / train_batch_size)
-            valid_batch = int(valid_image_num / valid_batch_size)
-            test_batch = int(test_image_num / test_batch_size)
-            for i in range(100):
 
-                if coord.should_stop():
-                    break
-                for j in range(train_batch + 1):
-                    train_image, train_label = sess.run([train_image_batch, train_label_batch])
-                    model.train_on_batch(train_image, train_label)
+        for ele1 in tf.trainable_variables():
+            print ele1.name
 
-                train_loss = 0.0
-                train_correct_num = 0
+        for i in range(100):
+            for j in range(train_batch):
+                train_image, train_label = get_batch(train_generator, "../CUB_200_2011/CUB_200_2011/images/")
+                train_label = np.eye(200, dtype=np.int64)[np.array(train_label).reshape(-1)]
+                model.train_on_batch(train_image, train_label)
 
-                for j in range(train_batch + 1):
-                    test_train_image, test_train_label = sess.run([test_train_image_batch, test_train_label_batch])
-                    test_train_test = model.test_on_batch(test_train_image, test_train_label)
-                    train_loss += test_train_test[0]
-                    train_correct_num += train_batch_size * test_train_test[1]
+            train_loss = 0.0
+            train_correct_num = 0
+
+            for j in range(train_batch):
+                test_train_image, test_train_label = get_batch(train_generator, "../CUB_200_2011/CUB_200_2011/images/")
+                test_train_label = np.eye(200, dtype=np.int64)[np.array(test_train_label).reshape(-1)]
+                test_train_test = model.test_on_batch(test_train_image, test_train_label)
+                train_loss += test_train_test[0]
+                train_correct_num += train_batch_size * test_train_test[1]
+
+            print
+            print ("Epoch: {}".format(i))
+            print ("Train Loss: {}".format(train_loss))
+            print ("Correct_train_count: {}  Total_train_count: {}".format(train_correct_num, train_batch_size * (train_batch + 1)))
+            print ("Train Data Accuracy: {}".format(100.0 * train_correct_num / (1.0 * train_batch_size * (train_batch + 1))))
+            print
+
+            train_losses.append(train_loss)
+            train_accuracys.append(100.0 * train_correct_num / (1.0 * train_batch_size * (train_batch + 1)))
+
+            valid_loss = 0.0
+            valid_correct_num = 0
+
+            for j in range(valid_batch):
+                valid_image, valid_label = get_batch(valid_generator, "../CUB_200_2011/CUB_200_2011/images/")
+                valid_label = np.eye(200, dtype=np.int64)[np.array(valid_label).reshape(-1)]
+                valid_test = model.test_on_batch(valid_image, valid_label)
+                valid_loss += valid_test[0]
+                valid_correct_num += valid_batch_size * valid_test[1]
+
+            print
+            print ("Epoch: {}".format(i))
+            print ("Validation Loss: {}".format(valid_loss))
+            print ("Correct_val_count: {}  Total_val_count: {}".format(valid_correct_num, valid_batch_size * (valid_batch + 1)))
+            print ("Validation Data Accuracy: {}".format(100.0 * valid_correct_num / (1.0 * valid_batch_size * (valid_batch + 1))))
+            print
+
+            valid_losses.append(valid_loss)
+            valid_accuracys.append(100.0 * valid_correct_num / (1.0 * valid_batch_size * (valid_batch + 1)))
+
+            if (i + 1) % 10 == 0:
+
+                test_loss = 0.0
+                test_correct_num = 0
+
+                for j in range(test_batch):
+                    test_image, test_label = get_batch(train_batch, "../CUB_200_2011/CUB_200_2011/images/")
+                    test_label = np.eye(200, dtype=np.int64)[np.array(test_label).reshape(-1)]
+                    test_test = model.test_on_batch(test_image, test_label)
+                    test_loss += test_test[0]
+                    test_correct_num += test_batch_size * test_test[1]
+
 
                 print
-                print ("Epoch: {}".format(i))
-                print ("Train Loss: {}".format(train_loss))
-                print ("Correct_train_count: {}  Total_train_count: {}".format(train_correct_num, train_batch_size * (train_batch + 1)))
-                print ("Train Data Accuracy: {}".format(100.0 * train_correct_num / (1.0 * train_batch_size * (train_batch + 1))))
+                print ("Epoch: {}", i)
+                print ("Test Loss: {}".format(test_loss))
+                print ("Correct_test_count: {}  Total_test_count: {}".format(test_correct_num, test_image_num))
+                print ("Test Data Accuracy: {}".format(100.0 * test_correct_num / (1.0 * test_batch_size * (test_batch + 1))))
                 print
 
-                train_losses.append(train_loss)
-                train_accuracys.append(100.0 * train_correct_num / (1.0 * train_batch_size * (train_batch + 1)))
+                test_losses.append(test_loss)
+                test_accuracys.append(100.0 * test_correct_num / (1.0 * test_batch_size * (test_batch + 1)))
 
-                valid_loss = 0.0
-                valid_correct_num = 0
+                model.save('densenet121_' + str(i) + '.h5')
 
-                for j in range(valid_batch + 1):
-                    valid_image, valid_label = sess.run([valid_image_batch, valid_label_batch])
-                    valid_test = model.test_on_batch(valid_image, valid_label)
-                    valid_loss += valid_test[0]
-                    valid_correct_num += valid_batch_size * valid_test[1]
-
-                print
-                print ("Epoch: {}".format(i))
-                print ("Validation Loss: {}".format(valid_loss))
-                print ("Correct_val_count: {}  Total_val_count: {}".format(valid_correct_num, valid_batch_size * (valid_batch + 1)))
-                print ("Validation Data Accuracy: {}".format(100.0 * valid_correct_num / (1.0 * valid_batch_size * (valid_batch + 1))))
-                print
-
-                valid_losses.append(valid_loss)
-                valid_accuracys.append(100.0 * valid_correct_num / (1.0 * valid_batch_size * (valid_batch + 1)))
-
-                if (i + 1) % 10 == 0:
-
-                    test_loss = 0.0
-                    test_correct_num = 0
-
-                    for j in range(test_batch + 1):
-                        test_image, test_label = sess.run([test_image_batch, test_label_batch])
-                        test_test = model.test_on_batch(test_image, test_label)
-                        test_loss += test_test[0]
-                        test_correct_num += test_batch_size * test_test[1]
-
-
-                    print
-                    print ("Epoch: {}", i)
-                    print ("Test Loss: {}".format(test_loss))
-                    print ("Correct_test_count: {}  Total_test_count: {}".format(test_correct_num, test_image_num))
-                    print ("Test Data Accuracy: {}".format(100.0 * test_correct_num / (1.0 * test_batch_size * (test_batch + 1))))
-                    print
-
-                    test_losses.append(test_loss)
-                    test_accuracys.append(100.0 * test_correct_num / (1.0 * test_batch_size * (test_batch + 1)))
-
-                    model.save('densenet121_' + str(i) + '.h5')
-
-        except tf.errors.OutOfRangeError:
-            print('Done!')
-        finally:
-            coord.request_stop()
-        coord.join(threads)
 
     f = open("res", 'w+')
     print >> f, train_losses

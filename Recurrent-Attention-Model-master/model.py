@@ -166,7 +166,7 @@ class GlimpseNetwork(object):
     # input size: 224 224   output size: 4096
     def patch_feature_extractor_2(self, rgb, train_mode=None):
         red, green, blue = tf.split(axis=3, num_or_size_splits=3, value=rgb)
-        assert rgb.get_shape().as_list()[1:] == [64, 64, 3]
+        assert rgb.get_shape().as_list()[1:] == [224, 224, 3]
         # assert red.get_shape().as_list()[1:] == [224, 224, 1]
         # assert green.get_shape().as_list()[1:] == [224, 224, 1]
         # assert blue.get_shape().as_list()[1:] == [224, 224, 1]
@@ -496,8 +496,20 @@ class OneShotMultiAttentionModel(object):
             self.reward = tf.reduce_mean(reward)
             # baseline loss
             self.baselines_mse = tf.reduce_mean(tf.square((rewards - baselines)))
+            # L2 loc loss
+            self.l2_loc_loss = 0
+            for i in range(num_glimpses):
+                for j in range(i, num_glimpses):
+                    self.l2_loc_loss += tf.reduce_mean(tf.square(self.locs[i] - self.locs[j]))
+            self.l2_loc_loss *= 0.1
+            # L2 glimpse loss
+            self.l2_glimpse_loss = 0
+            for i in range(num_glimpses + 1):
+                for j in range(i, num_glimpses + 1):
+                    self.l2_glimpse_loss += tf.reduce_mean(tf.square(self.glimpses[i] - self.glimpses[j]))
+            self.l2_glimpse_loss *= 0.05
             # hybrid loss
-            self.loss = -logllratio + self.xent + self.baselines_mse
+            self.loss = -logllratio + self.xent + self.baselines_mse - self.l2_glimpse_loss - self.l2_loc_loss
             params = tf.trainable_variables()
             gradients = tf.gradients(self.loss, params)
             clipped_gradients, norm = tf.clip_by_global_norm(gradients, max_gradient_norm)
@@ -505,5 +517,96 @@ class OneShotMultiAttentionModel(object):
                 zip(clipped_gradients, params), global_step=self.global_step)
             # self.train_op = tf.train.AdamOptimizer(self.learning_rate).apply_gradients(
             #     zip(clipped_gradients, params), global_step=self.global_step)
+
+        self.saver = tf.train.Saver(tf.global_variables(), max_to_keep=99999999)
+
+
+class NoGlimpseModel(object):
+    def __init__(self, img_size, pth_size, g_size, l_size, glimpse_output_size,
+                 loc_dim, variance,
+                 cell_size, num_glimpses, num_classes,
+                 learning_rate, learning_rate_decay_factor, min_learning_rate, training_steps_per_epoch,
+                 max_gradient_norm,
+                 is_training=False):
+
+        self.img_ph = tf.placeholder(tf.float32, [None, img_size, img_size, 3])
+        self.lbl_ph = tf.placeholder(tf.int64, [None])
+
+        self.global_step = tf.Variable(0, trainable=False)
+
+        # self.learning_rate = learning_rate
+
+        self.learning_rate = tf.maximum(tf.train.exponential_decay(
+            learning_rate, self.global_step,
+            training_steps_per_epoch,
+            learning_rate_decay_factor,
+            staircase=True),
+            min_learning_rate)
+
+        cell = BasicLSTMCell(cell_size)
+
+        with tf.variable_scope('GlimpseNetwork'):
+            glimpse_network = GlimpseNetwork(img_size, pth_size, loc_dim, g_size, l_size, glimpse_output_size,
+                                             './vgg16.npy')
+        with tf.variable_scope('LocationNetwork'):
+            location_network = LocationNetwork(loc_dim=loc_dim, rnn_output_size=cell.output_size, variance=variance,
+                                               is_sampling=is_training)
+
+        # Core Network
+        batch_size = tf.shape(self.img_ph)[0]
+        init_loc = tf.random_uniform((batch_size, loc_dim), minval=-1, maxval=1)
+        init_state = cell.zero_state(batch_size, tf.float32)
+
+        init_glimpse = glimpse_network(self.img_ph, init_loc, init=True)
+        self.init_glip = init_glimpse
+        rnn_inputs = [init_glimpse]
+        rnn_inputs.extend([0] * num_glimpses)
+
+        locs, loc_means = [], []
+        glimpses = []
+
+        def loop_function(prev, _):
+            loc, loc_mean = location_network(prev)
+            locs.append(loc)
+            loc_means.append(loc_mean)
+            glimpse = glimpse_network(self.img_ph, loc)
+            glimpses.append(glimpse)
+            return glimpse
+
+        self.locs = locs
+        self.glim = glimpses
+
+        rnn_outputs, rnn_states = rnn_decoder(rnn_inputs, init_state, cell, loop_function=loop_function)
+
+        self.rnn_out = rnn_outputs
+        self.rnn_states = rnn_states
+
+        print len(self.rnn_out)
+
+        # Classification. Take the last step only.
+        rnn_last_output = rnn_outputs[-1]
+
+        print rnn_last_output.get_shape()
+
+        self.rnn_last = rnn_last_output
+        with tf.variable_scope('Classification'):
+            logit_w = _weight_variable((cell.output_size, num_classes))
+            logit_b = _bias_variable((num_classes,))
+        logits = tf.nn.xw_plus_b(rnn_last_output, logit_w, logit_b)
+        self.logits = logits
+        self.prediction = tf.argmax(logits, 1)
+        self.softmax = tf.nn.softmax(logits)
+
+        if is_training:
+            # classification loss
+            self.xent = tf.reduce_mean(
+                tf.nn.sparse_softmax_cross_entropy_with_logits(labels=self.lbl_ph, logits=logits))
+            # RL reward
+            self.loss = self.xent
+            params = tf.trainable_variables()
+            gradients = tf.gradients(self.loss, params)
+            clipped_gradients, norm = tf.clip_by_global_norm(gradients, max_gradient_norm)
+            self.train_op = tf.train.MomentumOptimizer(self.learning_rate, 0.9).apply_gradients(
+                zip(clipped_gradients, params), global_step=self.global_step)
 
         self.saver = tf.train.Saver(tf.global_variables(), max_to_keep=99999999)

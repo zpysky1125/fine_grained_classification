@@ -139,12 +139,14 @@ class Vgg19:
         if self.data_dict is not None and name in self.data_dict:
             value = self.data_dict[name][idx]
             print name + " get from dict"
+            trainable = False
         else:
             value = initial_value
             print name + " get from initial"
+            trainable = True
 
         if self.trainable:
-            var = tf.Variable(value, name=var_name)
+            var = tf.Variable(value, name=var_name, trainable=trainable)
         else:
             var = tf.constant(value, dtype=tf.float32, name=var_name)
 
