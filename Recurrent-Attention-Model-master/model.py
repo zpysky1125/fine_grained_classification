@@ -35,10 +35,10 @@ class RetinaSensor(object):
 
     def __call__(self, img_ph, loc, init=False):
         if init:
-            pth = tf.image.resize_images(img_ph, [self.pth_size, self.pth_size])
+            pth = img_ph
         else:
             pth = tf.image.extract_glimpse(img_ph, [self.pth_size, self.pth_size], loc)
-        pth = tf.image.resize_images(img_ph, [self.img_size, self.img_size])
+            pth = tf.image.resize_images(pth, [self.img_size, self.img_size])
         return pth
 
 

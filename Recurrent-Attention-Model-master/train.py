@@ -17,7 +17,7 @@ from input_generator import get_batch, BirdClassificationGenerator
 train_image_num = 5094
 valid_image_num = 900
 test_image_num = 5794
-train_batch_size = valid_batch_size = test_batch_size = 64
+train_batch_size = valid_batch_size = test_batch_size = 16
 
 train_batch = train_image_num // train_batch_size if train_image_num % train_batch_size == 0 else train_image_num // train_batch_size + 1
 valid_batch = valid_image_num // valid_batch_size if valid_image_num % valid_batch_size == 0 else valid_image_num // valid_batch_size + 1
@@ -71,7 +71,7 @@ ram = RecurrentAttentionModel(img_size=224,  # MNIST: 28 * 28
                               max_gradient_norm=FLAGS.max_gradient_norm,
                               is_training=True)
 
-
+saver = tf.train.Saver()
 
 with tf.Session() as sess:
     sess.run(tf.global_variables_initializer())
@@ -107,7 +107,7 @@ with tf.Session() as sess:
                     step, learning_rate, loss, xent, reward, advantage, baselines_mse))
 
         # Evaluation
-        if step and step % train_batch == 0:
+        if step and step % (train_batch * 10) == 0:
             for dataset in ['train', 'valid', 'test']:
                 steps_per_epoch = None
                 if dataset == 'valid':
@@ -154,3 +154,4 @@ with tf.Session() as sess:
                     logging.info('test accuracy = {}'.format(acc))
                 else:
                     logging.info('train accuracy = {}'.format(acc))
+            save_path = saver.save(sess, "tmp/model.ckpt")

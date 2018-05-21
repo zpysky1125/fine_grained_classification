@@ -136,7 +136,7 @@ class Vgg16:
         if self.data_dict is not None and name in self.data_dict:
             value = self.data_dict[name][idx]
             print name + " get from dict"
-            trainable = False
+            trainable = True
         else:
             value = initial_value
             print name + " get from initial"
