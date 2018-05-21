@@ -306,7 +306,7 @@ class RecurrentAttentionModel(object):
             staircase=True),
             min_learning_rate)
 
-        cell = BasicRNNCell(cell_size)
+        # cell = BasicRNNCell(cell_size)
 
         cell = BasicLSTMCell(cell_size)
 
@@ -328,18 +328,18 @@ class RecurrentAttentionModel(object):
         rnn_inputs.extend([0] * num_glimpses)
 
         locs, loc_means = [], []
-        glimpses = []
+        # glimpses = []
 
         def loop_function(prev, _):
             loc, loc_mean = location_network(prev)
             locs.append(loc)
             loc_means.append(loc_mean)
             glimpse = glimpse_network(self.img_ph, loc)
-            glimpses.append(glimpse)
+            # glimpses.append(glimpse)
             return glimpse
 
         self.locs = locs
-        self.glim = glimpses
+        # self.glim = glimpses
 
         rnn_outputs, rnn_states = rnn_decoder(rnn_inputs, init_state, cell, loop_function=loop_function)
 

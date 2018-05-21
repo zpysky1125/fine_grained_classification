@@ -130,7 +130,7 @@ with tf.Session() as sess:
                     # Duplicate M times
                     images = np.tile(images, [FLAGS.M, 1, 1, 1])
                     labels = np.tile(labels, [FLAGS.M])
-                    softmax, logits, rnn_last, init_glip, glims, locs, rnn_out, rnn_state = sess.run([ram.softmax, ram.logits, ram.rnn_last, ram.init_glip, ram.glim, ram.locs, ram.rnn_out, ram.rnn_states],
+                    softmax, logits = sess.run([ram.softmax, ram.logits],
                                        feed_dict={
                                            ram.img_ph: images,
                                            ram.lbl_ph: labels
