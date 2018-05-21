@@ -38,7 +38,7 @@ class RetinaSensor(object):
             pth = tf.image.resize_images(img_ph, [self.pth_size, self.pth_size])
         else:
             pth = tf.image.extract_glimpse(img_ph, [self.pth_size, self.pth_size], loc)
-        # pth = tf.image.resize_images(img_ph, [self.img_size, self.img_size])
+        pth = tf.image.resize_images(img_ph, [self.img_size, self.img_size])
         return pth
 
 
@@ -101,7 +101,7 @@ class GlimpseNetwork(object):
     def __call__(self, imgs_ph, locs, train_mode=None, init=False):
         rgb = self.retina_sensor(imgs_ph, locs, init)
         # g = self.patch_feature_extractor(rgb, train_mode)
-        g = self.patch_feature_extractor(rgb)
+        g = self.patch_feature_extractor_2(rgb)
         # return tf.nn.relu(g)
         l = self.loc_feature_extractor(locs)
         return tf.nn.relu(l + g)
@@ -390,7 +390,7 @@ class RecurrentAttentionModel(object):
             params = tf.trainable_variables()
             gradients = tf.gradients(self.loss, params)
             clipped_gradients, norm = tf.clip_by_global_norm(gradients, max_gradient_norm)
-            self.train_op = tf.train.MomentumOptimizer(self.learning_rate, 0.9).apply_gradients(
+            self.train_op = tf.train.AdamOptimizer(self.learning_rate).apply_gradients(
                 zip(clipped_gradients, params), global_step=self.global_step)
             # self.train_op = tf.train.AdamOptimizer(self.learning_rate).apply_gradients(
             #     zip(clipped_gradients, params), global_step=self.global_step)
