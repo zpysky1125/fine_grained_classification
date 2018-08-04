@@ -55,7 +55,7 @@ class BirdClassificationGenerator(object):
         #     spamreader = csv.reader(f, delimiter=' ')
         #     for row in spamreader:
         #         self.bb_bird_dict[int(row[0])] = [int(float(x)) for x in row[1:5]]
-
+# TODO: random crop; random noise 1%-5%; 50% flip% rotation
     def _shuffle(self):
         random.shuffle(self.train_list)
 

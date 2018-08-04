@@ -4,6 +4,7 @@ from __future__ import print_function
 
 import tensorflow as tf
 from model import RecurrentAttentionModel
+from vgg_preprocessing import preprocess_image
 import logging
 import numpy as np
 
@@ -13,11 +14,10 @@ sys.path.append('../')
 
 from input_generator import get_batch, BirdClassificationGenerator
 
-
 train_image_num = 5094
 valid_image_num = 900
 test_image_num = 5794
-train_batch_size = valid_batch_size = test_batch_size = 16
+train_batch_size = valid_batch_size = test_batch_size = 4
 
 train_batch = train_image_num // train_batch_size if train_image_num % train_batch_size == 0 else train_image_num // train_batch_size + 1
 valid_batch = valid_image_num // valid_batch_size if valid_image_num % valid_batch_size == 0 else valid_image_num // valid_batch_size + 1
@@ -51,7 +51,6 @@ tf.app.flags.DEFINE_float("variance", 0.22, "Gaussian variance for Location Netw
 tf.app.flags.DEFINE_integer("M", 10, "Monte Carlo sampling, see Eq(2).")
 
 FLAGS = tf.app.flags.FLAGS
-
 # training_steps_per_epoch = mnist.train.num_examples // FLAGS.batch_size
 
 ram = RecurrentAttentionModel(img_size=224,  # MNIST: 28 * 28
@@ -78,6 +77,7 @@ with tf.Session() as sess:
     for step in xrange(FLAGS.num_steps):
 
         images, labels = get_batch(train_generator, "../CUB_200_2011/CUB_200_2011/images/")
+
         images = np.tile(images, [FLAGS.M, 1, 1, 1])
         labels = np.tile(labels, [FLAGS.M])
 
@@ -107,7 +107,7 @@ with tf.Session() as sess:
                     step, learning_rate, loss, xent, reward, advantage, baselines_mse))
 
         # Evaluation
-        if step and step % (train_batch * 10) == 0:
+        if step and (step % train_batch == 0):
             for dataset in ['train', 'valid', 'test']:
                 steps_per_epoch = None
                 if dataset == 'valid':
@@ -154,4 +154,5 @@ with tf.Session() as sess:
                     logging.info('test accuracy = {}'.format(acc))
                 else:
                     logging.info('train accuracy = {}'.format(acc))
-            save_path = saver.save(sess, "tmp/model.ckpt")
+        if step and (step % train_batch == 0):
+            save_path = saver.save(sess, "tmp2/model.ckpt", global_step=step)
