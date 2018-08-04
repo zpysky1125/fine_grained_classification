@@ -165,6 +165,9 @@ class ResNetFineTuneModel:
     def run(self):
         self.sess.run(tf.global_variables_initializer())
 
+        init_fn = slim.assign_from_checkpoint_fn('resnet_v1_50.ckpt', slim.get_model_variables('resnet_v1_50'))
+        init_fn(sess)
+
         saver = tf.train.Saver()
         cur_time = str(time.time())
         train_writer = tf.summary.FileWriter('run/resnet_fine_tune/' + str(self.learning_rate) + '_' + str(cur_time) + '/board/train', sess.graph)
