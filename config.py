@@ -3,6 +3,12 @@ resnet_fine_tune_model = dict(
     learning_rate=1e-4,
     resize_side_min=224,
     resize_side_max=512,
+
+    drop1=0.3,
+    drop2=0.3,
+    internal_size=512,
+    train_method='Adam',
+
     train_path='CUB_200_2011/CUB_200_2011/splits/train.txt',
     valid_path='CUB_200_2011/CUB_200_2011/splits/valid.txt',
     test_path='CUB_200_2011/CUB_200_2011/splits/test.txt',

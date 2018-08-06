@@ -140,7 +140,7 @@ class RecurrentAttentionModel(object):
     def _generate_train_image_label(self):
         dataset = tf.data.Dataset.from_tensor_slices((self.train_image_names, self.train_labels))
         dataset = dataset.map(self._train_parse_func)
-        dataset = dataset.shuffle(buffer_size=500)
+        dataset = dataset.shuffle(buffer_size=5094)
         dataset = dataset.batch(self.batch_size)
         dataset = dataset.repeat()
         return dataset
@@ -316,12 +316,12 @@ class RecurrentAttentionModel(object):
             zip(clipped_gradients, params), global_step=self.global_step)
 
         self.test_label = tf.argmax(tf.reduce_mean(tf.reshape(probs, [self.glimpse_times, -1, 200]), axis=0), 1, output_type=tf.int32)
-        self.test_acc = tf.reduce_mean(tf.cast(tf.equal(predict_label, self.labels), tf.float32))
+        self.test_acc = tf.reduce_mean(tf.cast(tf.equal(self.test_label, self.labels), tf.float32))
 
         self.reward = tf.reduce_mean(rewards)
         self.advantage = tf.reduce_mean(advantages)
 
-        tf.summary.histogram('probs', tf.reduce_mean(probs * tf.one_hot(self.lbl_ph, 200), axis=-1))
+        tf.summary.histogram('probs', tf.reduce_sum(probs * tf.one_hot(self.lbl_ph, 200), axis=-1))
         for param in params:
             tf.summary.histogram(param.name, param)
         tf.summary.scalar('loss', self.loss)
@@ -337,7 +337,7 @@ class RecurrentAttentionModel(object):
         init_fn = slim.assign_from_checkpoint_fn('resnet_v1_50.ckpt', slim.get_model_variables('resnet_v1_50'))
         init_fn(self.sess)
 
-        saver = tf.train.Saver()
+        saver = tf.train.Saver(max_to_keep=10)
         cur_time = str(time.time())
         train_writer = tf.summary.FileWriter('log/ram/' + str(self.learning_rate) + '_' + cur_time + '/board/train', self.sess.graph)
         test_writer = tf.summary.FileWriter('log/ram/' + str(self.learning_rate) + '_' + cur_time + '/board/test', self.sess.graph)
@@ -367,8 +367,7 @@ class RecurrentAttentionModel(object):
                                  'cls_loss = {:3.4f} \t rein_loss = {:3.4f} \t base_loss = {:3.4f}'
                                  .format(epoch, train_step, loss, reward, advantage, cls_loss, rein_loss, base_loss))
 
-            saver.save(self.sess, 'log/ram/' + str(self.learning_rate) + '_' + cur_time + '/tmp/model.ckpt',
-                       global_step=epoch)
+
 
             self.sess.run(self.valid_init_op)
             statistics = []
@@ -391,11 +390,13 @@ class RecurrentAttentionModel(object):
                         [self.merged, self.loss, self.test_acc, self.reward, self.advantage, self.classification_loss,
                          self.reinforce_loss, self.baselines_loss],
                         feed_dict={self.train_mode: False})
-                    test_writer.add_summary(summary, epoch * self.test_step_per_epoch + test_step)
+                    test_writer.add_summary(summary, (epoch/5) * self.test_step_per_epoch + test_step)
                     statistics.append([loss, acc, reward, advantage, cls_loss, rein_loss, base_loss])
                 statistics = np.mean(np.asarray(statistics, np.float32), axis=0)
                 logging.info('Epoch {} Test: loss = {:3.4f}\t acc = {:3.4f} \t reward = {:3.4f} \t advantage = {:3.4f} \t '
                              'cls_loss = {:3.4f} \t rein_loss = {:3.4f} \t base_loss = {:3.4f}'.format(epoch, *statistics))
+                saver.save(self.sess, 'log/ram/' + str(self.learning_rate) + '_' + cur_time + '/tmp/model.ckpt',
+                           global_step=epoch)
 
         train_writer.close()
         test_writer.close()
