@@ -15,17 +15,21 @@ from tensorflow.contrib.slim.nets import resnet_v1
 
 class ResNetFineTuneModel:
     def __init__(self, sess=None, batch_size=32, learning_rate=1e-4, resize_side_min=224, resize_side_max=512,
-                 drop1=0.3, drop2=0.3, internal_size=512, train_method='Adam',
+                 drop1=0.3, drop2=0.3, internal_size=512, train_method='Adam', parse_mode='crop',
                  train_path='', valid_path='', test_path='', train_epoch=20, train_step_per_epoch=200,
                  test_step_per_epoch=100, valid_step_per_epoch=100, logging_step=50):
 
         self.batch_size = batch_size
 
+        self.train_step_per_epoch = (5094 // self.batch_size) if 5094 % self.batch_size == 0 else (5094 // self.batch_size + 1)
+        self.test_step_per_epoch = (5794 // self.batch_size) if 5794 % self.batch_size == 0 else (5794 // self.batch_size + 1)
+        self.valid_step_per_epoch = (900 // self.batch_size) if 900 % self.batch_size == 0 else (900 // self.batch_size + 1)
+
         self.global_step = tf.Variable(0, trainable=False, name='global_step')
         self.learning_rate = learning_rate
         self.decay_learning_rate = tf.maximum(tf.train.exponential_decay(
             learning_rate, self.global_step,
-            train_step_per_epoch,
+            self.train_step_per_epoch,
             0.99,
             staircase=True,
             name='learning_rate_decay'),
@@ -43,9 +47,6 @@ class ResNetFineTuneModel:
         self.valid_image_names, self.valid_labels = self._generate_image_names_and_labels(valid_path)
 
         self.train_epoch = train_epoch
-        self.train_step_per_epoch = train_step_per_epoch
-        self.test_step_per_epoch = test_step_per_epoch
-        self.valid_step_per_epoch = valid_step_per_epoch
 
         self.logging_step = logging_step
 
@@ -53,6 +54,7 @@ class ResNetFineTuneModel:
         self.drop2 = drop2
         self.internal = internal_size
         self.train_method = train_method
+        self.parse_mode = parse_mode
 
         self.sess = sess
 
@@ -108,11 +110,14 @@ class ResNetFineTuneModel:
     def _train_parse_func(self, filename, label):
         image_string = tf.read_file(filename)
         image = tf.image.decode_jpeg(image_string, channels=3)
-        resize_side = tf.random_uniform([], minval=self.resize_side_min, maxval=self.resize_side_max + 1,
-                                        dtype=tf.int32)
-        image = self._aspect_preserving_resize(image, resize_side)
-        crop = tf.random_crop(image, [224, 224, 3])
-        image = tf.to_float(crop)
+        if self.parse_mode == 'crop':
+            resize_side = tf.random_uniform([], minval=self.resize_side_min, maxval=self.resize_side_max + 1,
+                                            dtype=tf.int32)
+            image = self._aspect_preserving_resize(image, resize_side)
+            image = tf.random_crop(image, [224, 224, 3])
+        else:
+            image = tf.image.resize_images(image, [448, 448])
+        image = tf.to_float(image)
         normalize_image = self._mean_image_subtraction(image, [123.68, 116.78, 103.94])
         normalize_image = tf.image.random_flip_left_right(normalize_image)
         return normalize_image, label
@@ -120,18 +125,32 @@ class ResNetFineTuneModel:
     def _test_parse_func(self, filename, label):
         image_string = tf.read_file(filename)
         image = tf.image.decode_jpeg(image_string, channels=3)
-        image = self._aspect_preserving_resize(image, self.resize_side_min)
-        crop = tf.image.resize_image_with_crop_or_pad(image, 224, 224)
-        # multi crop
-        # height, width = tf.shape(image)[0], tf.shape(image)[1]
-        # top_left_crop = tf.image.crop_to_bounding_box(image, 0, 0, 224, 224)
-        # top_right_crop = tf.image.crop_to_bounding_box(image, 0, width-224, 224, 224)
-        # bottom_left_crop = tf.image.crop_to_bounding_box(image, height-224, 0, 224, 224)
-        # bottom_right_crop = tf.image.crop_to_bounding_box(image, height-224, width-224, 224, 224)
-
-        image = tf.to_float(crop)
+        if self.parse_mode == 'crop':
+            image = self._aspect_preserving_resize(image, self.resize_side_min)
+            image = tf.image.resize_image_with_crop_or_pad(image, 224, 224)
+        else:
+            image = tf.image.resize_images(image, [448, 448])
+        image = tf.to_float(image)
         normalize_image = self._mean_image_subtraction(image, [123.68, 116.78, 103.94])
         return normalize_image, label
+
+    def _test_multi_parse_func(self, filename, label):
+        image_string = tf.read_file(filename)
+        image = tf.image.decode_jpeg(image_string, channels=3)
+        image = self._aspect_preserving_resize(image, self.resize_side_min)
+        center_crop = tf.image.resize_image_with_crop_or_pad(image, 224, 224)
+        # multi crop
+        height, width = tf.shape(image)[0], tf.shape(image)[1]
+        top_left_crop = tf.image.crop_to_bounding_box(image, 0, 0, 224, 224)
+        top_right_crop = tf.image.crop_to_bounding_box(image, 0, width-224, 224, 224)
+        bottom_left_crop = tf.image.crop_to_bounding_box(image, height-224, 0, 224, 224)
+        bottom_right_crop = tf.image.crop_to_bounding_box(image, height-224, width-224, 224, 224)
+        multi_crops = [center_crop, top_left_crop, top_right_crop, bottom_left_crop, bottom_right_crop]
+        multi_crops = [self._mean_image_subtraction(tf.to_float(crop), [123.68, 116.78, 103.94]) for crop in multi_crops]
+        flip_crops = [tf.image.flip_left_right(crop) for crop in multi_crops]
+        multi_crops = multi_crops + flip_crops
+        multi_crops = tf.stack(multi_crops)
+        return multi_crops, label
 
     def _generate_train_image_label(self):
         dataset = tf.data.Dataset.from_tensor_slices((self.train_image_names, self.train_labels))
@@ -144,6 +163,12 @@ class ResNetFineTuneModel:
     def generate_test_image_label(self):
         dataset = tf.data.Dataset.from_tensor_slices((self.test_image_names, self.test_labels))
         dataset = dataset.map(self._test_parse_func)
+        dataset = dataset.batch(self.batch_size)
+        return dataset
+
+    def generate_test_multi_image_label(self):
+        dataset = tf.data.Dataset.from_tensor_slices((self.test_image_names, self.test_labels))
+        dataset = dataset.map(self._test_multi_parse_func)
         dataset = dataset.batch(self.batch_size)
         return dataset
 
@@ -178,6 +203,7 @@ class ResNetFineTuneModel:
         self.train_mode = tf.placeholder(tf.bool)
         self.train_dataset = self._generate_train_image_label()
         self.test_dataset = self.generate_test_image_label()
+        self.test_multi_dataset = self.generate_test_multi_image_label()
         self.valid_dataset = self.generate_valid_image_label()
 
         self.iter = tf.data.Iterator.from_structure(self.train_dataset.output_types, self.train_dataset.output_shapes)
@@ -193,6 +219,16 @@ class ResNetFineTuneModel:
             tf.nn.sparse_softmax_cross_entropy_with_logits(logits=self.logits, labels=self.labels))
         self.predict_labels = tf.argmax(self.logits, axis=-1, output_type=tf.int32)
         self.accuracy = tf.reduce_mean(tf.cast(tf.equal(self.predict_labels, self.labels), tf.float32))
+
+        self.multi_iter = tf.data.Iterator.from_structure(self.test_multi_dataset.output_types, self.test_multi_dataset.output_shapes)
+        self.test_multi_init_op = self.multi_iter.make_initializer(self.test_multi_dataset)
+
+        self.multi_images, self.labels = self.multi_iter.get_next()
+        self.multi_images = tf.reshape(self.multi_images, [-1, 224, 224, 3])
+        self.multi_probs = tf.reduce_mean(tf.reshape(tf.nn.softmax(self.feature_extractor(self.multi_images, False)),
+                                                     [-1, 10, 200]), axis=1)
+        self.multi_labels = tf.argmax(self.multi_probs, axis=-1, output_type=tf.int32)
+        self.multi_accuracy = tf.reduce_mean(tf.cast(tf.equal(self.multi_labels, self.labels), tf.float32))
 
         if self.mode == 'fine_tune':
             params = tf.trainable_variables()
@@ -220,8 +256,8 @@ class ResNetFineTuneModel:
     def run(self):
         self.sess.run(tf.global_variables_initializer())
         if self.mode == 'fine_tune':
-            var_list = [var for var in tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES) if 'Adam' not in var.name
-                        and 'global_step' not in var.name and 'resnet' not in var.name]
+            var_list = [var for var in tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES) if self.train_method not in var.name
+                        and 'global_step' not in var.name]
             restore = tf.train.Saver(var_list)
             restore.restore(self.sess, sys.argv[2])
         elif self.mode == 'init':
@@ -230,28 +266,33 @@ class ResNetFineTuneModel:
         else:
             sys.exit(1)
 
-        saver = tf.train.Saver(max_to_keep=10)
+        saver = tf.train.Saver(max_to_keep=30)
         cur_time = str(time.time())
-        train_writer = tf.summary.FileWriter('log/resnet_fine_tune/' + self.mode + '_' + str(self.learning_rate) + '_' + str(cur_time) + '/board/train', sess.graph)
-        test_writer = tf.summary.FileWriter('log/resnet_fine_tune/' + self.mode + '_' + str(self.learning_rate) + '_' + str(cur_time) + '/board/test', sess.graph)
-        valid_writer = tf.summary.FileWriter('log/resnet_fine_tune/' + self.mode + '_' + str(self.learning_rate) + '_' + str(cur_time) + '/board/valid', sess.graph)
+        train_writer = tf.summary.FileWriter('log/resnet_fine_tune/' + self.mode + '_' + str(self.learning_rate) + '_' + cur_time + '/board/train', sess.graph)
+        test_writer = tf.summary.FileWriter('log/resnet_fine_tune/' + self.mode + '_' + str(self.learning_rate) + '_' + cur_time + '/board/test', sess.graph)
+        valid_writer = tf.summary.FileWriter('log/resnet_fine_tune/' + self.mode + '_' + str(self.learning_rate) + '_' + cur_time + '/board/valid', sess.graph)
 
+        logging.info(self.mode)
         logging.info(str(self.learning_rate))
         logging.info(cur_time)
+        logging.info(self.train_method)
+        logging.info(self.parse_mode)
         logging.info('{} {} {} {} {}'.format(self.drop1, self.drop2, self.internal, self.resize_side_min, self.resize_side_max))
 
         for epoch in range(self.train_epoch):
+            losses, accs = [], []
             self.sess.run(self.train_init_op)
             for train_step in range(self.train_step_per_epoch):
                 __, summary, loss, accuracy = self.sess.run([self.train_op, self.merged, self.loss, self.accuracy],
                                                             feed_dict={self.train_mode: True})
 
                 train_writer.add_summary(summary, epoch * self.train_step_per_epoch + train_step)
+                losses.append(loss), accs.append(accuracy)
 
                 if train_step and train_step % self.logging_step == 0:
-                    logging.info('Epoch {} Train step {}: loss = {:3.4f}\t accuracy = {:3.4f}'
-                                 .format(epoch, train_step, loss, accuracy))
-
+                    logging.info('Epoch {} Train step {}: loss = {:3.4f}\t acc = {:3.4f}'
+                                 .format(epoch, train_step, np.mean(losses), np.mean(accs)))
+                    losses, accs = [], []
 
             self.sess.run(self.valid_init_op)
             losses, accs = [], []
@@ -261,7 +302,7 @@ class ResNetFineTuneModel:
                 valid_writer.add_summary(summary, epoch * self.valid_step_per_epoch + valid_step)
                 losses.append(loss)
                 accs.append(accuracy)
-            logging.info('Epoch {} Valid: loss = {:3.4f}\t accuracy = {:3.4f}'.format(epoch, np.mean(losses), np.mean(accs)))
+            logging.info('Epoch {} Valid: loss = {:3.4f}\t acc = {:3.4f}'.format(epoch, np.mean(losses), np.mean(accs)))
 
             if epoch and epoch % 5 == 0:
                 self.sess.run(self.test_init_op)
@@ -272,9 +313,21 @@ class ResNetFineTuneModel:
                     test_writer.add_summary(summary, (epoch/5) * self.test_step_per_epoch + test_step)
                     losses.append(loss)
                     accs.append(accuracy)
-                logging.info('Epoch {} Test: loss = {:3.4f}\t accuracy = {:3.4f}'.format(epoch, np.mean(losses), np.mean(accs)))
-                saver.save(self.sess, 'log/resnet_fine_tune/' + self.mode + '_' + str(self.learning_rate) + '_' + str(
-                    cur_time) + '/tmp/model.ckpt', global_step=epoch)
+
+                logging.info('Epoch {} Test: loss = {:3.4f}\t acc = {:3.4f} \t'.
+                             format(epoch, np.mean(losses), np.mean(accs)))
+
+                self.sess.run(self.test_multi_init_op)
+                multi_accs = []
+                for test_step in range(self.test_step_per_epoch):
+                    multi_acc = self.sess.run(self.multi_accuracy, feed_dict={self.train_mode: False})
+                    multi_accs.append(multi_acc)
+
+                logging.info('Epoch {} Test: loss = {:3.4f}\t accuracy = {:3.4f} \t multi accuracy = {:3.4f}'.
+                             format(epoch, np.mean(losses), np.mean(accs), np.mean(multi_accs)))
+
+                saver.save(self.sess, 'log/resnet_fine_tune/' + self.mode + '_' + str(self.learning_rate) + '_' +
+                    cur_time + '/tmp/model.ckpt', global_step=epoch)
 
         train_writer.close()
         test_writer.close()
