@@ -9,6 +9,7 @@ resnet_fine_tune_model = dict(
     internal_size=512,
     train_method='Adam',
     parse_mode='crop',
+    struct='single',
 
     train_path='CUB_200_2011/CUB_200_2011/splits/train.txt',
     valid_path='CUB_200_2011/CUB_200_2011/splits/valid.txt',
@@ -77,14 +78,16 @@ recurrent_attention_model_2 = dict(
     drop2=0.3,
 
     train_method='Adam',
-    crop_or_mask='crop',
-    reinforce_mode='baseline',
+    reinforce_mode='reinforce',
 
     learning_rate=5e-4,
     min_learning_rate=3e-5,
+    decay=0.995,
 
+    mode='origin',
     resize_side_min=280,
     resize_side_max=384,
+    origin_image_size=224,
     train_path='CUB_200_2011/CUB_200_2011/splits/train.txt',
     valid_path='CUB_200_2011/CUB_200_2011/splits/valid.txt',
     test_path='CUB_200_2011/CUB_200_2011/splits/test.txt',

@@ -15,9 +15,9 @@ from tensorflow.contrib.slim.nets import resnet_v1
 
 class ResNetFineTuneModel:
     def __init__(self, sess=None, batch_size=32, learning_rate=1e-4, resize_side_min=224, resize_side_max=512,
-                 drop1=0.3, drop2=0.3, internal_size=512, train_method='Adam', parse_mode='crop',
+                 drop1=0.3, drop2=0.3, drop3=0.5, internal_size=512, train_method='Adam', parse_mode='crop', decay=0.99,
                  train_path='', valid_path='', test_path='', train_epoch=20, train_step_per_epoch=200,
-                 test_step_per_epoch=100, valid_step_per_epoch=100, logging_step=50):
+                 test_step_per_epoch=100, valid_step_per_epoch=100, logging_step=50, struct='single'):
 
         self.batch_size = batch_size
 
@@ -27,10 +27,11 @@ class ResNetFineTuneModel:
 
         self.global_step = tf.Variable(0, trainable=False, name='global_step')
         self.learning_rate = learning_rate
+        self.decay = decay
         self.decay_learning_rate = tf.maximum(tf.train.exponential_decay(
             learning_rate, self.global_step,
             self.train_step_per_epoch,
-            0.99,
+            self.decay,
             staircase=True,
             name='learning_rate_decay'),
             3e-5)
@@ -52,9 +53,12 @@ class ResNetFineTuneModel:
 
         self.drop1 = drop1
         self.drop2 = drop2
+        self.drop3 = drop3
         self.internal = internal_size
         self.train_method = train_method
         self.parse_mode = parse_mode
+
+        self.struct = struct
 
         self.sess = sess
 
@@ -180,24 +184,33 @@ class ResNetFineTuneModel:
 
     def feature_extractor(self, images, train_mode=True):
         with slim.arg_scope(resnet_v1.resnet_arg_scope()):
-            net, end_points = resnet_v1.resnet_v1_50(images, 1000, is_training=train_mode, reuse=tf.AUTO_REUSE)
-        resnet_feature = end_points['resnet_v1_50/block4']
-        resnet_feature = tf.reduce_mean(resnet_feature, [1, 2], keepdims=True)
-        resnet_feature = tf.squeeze(resnet_feature)
-        resnet_feature = tf.reshape(resnet_feature, [-1, 2048])
-        drop1 = tf.layers.dropout(resnet_feature, rate=self.drop1, training=train_mode)
-        fc1 = tf.layers.dense(inputs=drop1, units=self.internal, activation=tf.nn.relu,
-                              kernel_initializer=tf.glorot_uniform_initializer(),
-                              bias_initializer=tf.constant_initializer(0.1),
-                              # kernel_regularizer=tf.nn.l2_loss,
-                              name='glimpse_feature/fc', reuse=tf.AUTO_REUSE)
-        drop2 = tf.layers.dropout(fc1, rate=self.drop2, training=train_mode)
-        fc2 = tf.layers.dense(inputs=drop2, units=200,
-                              kernel_initializer=tf.glorot_uniform_initializer(),
-                              bias_initializer=tf.constant_initializer(0.1),
-                              # kernel_regularizer=tf.nn.l2_loss,
-                              name='extractor/fc', reuse=tf.AUTO_REUSE)
-        return fc2
+            net, end_points = resnet_v1.resnet_v1_50(images, is_training=train_mode, reuse=tf.AUTO_REUSE)
+            net = tf.squeeze(net, [1, 2])
+        # resnet_feature = end_points['resnet_v1_50/block4']
+        # resnet_feature = tf.reduce_mean(resnet_feature, [1, 2], keepdims=True)
+        # resnet_feature = tf.squeeze(resnet_feature)
+        # resnet_feature = tf.reshape(resnet_feature, [-1, 2048])
+        if self.struct == 'single':
+            drop1 = tf.layers.dropout(net, rate=self.drop3, training=train_mode)
+            logit = tf.layers.dense(inputs=drop1, units=200,
+                                  kernel_initializer=tf.glorot_uniform_initializer(),
+                                  bias_initializer=tf.constant_initializer(0.1),
+                                  # kernel_regularizer=tf.nn.l2_loss,
+                                  name='glimpse_feature/fc', reuse=tf.AUTO_REUSE)
+        else:
+            drop1 = tf.layers.dropout(net, rate=self.drop1, training=train_mode)
+            fc1 = tf.layers.dense(inputs=drop1, units=self.internal, activation=tf.nn.relu,
+                                  kernel_initializer=tf.glorot_uniform_initializer(),
+                                  bias_initializer=tf.constant_initializer(0.1),
+                                  # kernel_regularizer=tf.nn.l2_loss,
+                                  name='glimpse_feature/fc', reuse=tf.AUTO_REUSE)
+            drop2 = tf.layers.dropout(fc1, rate=self.drop2, training=train_mode)
+            logit = tf.layers.dense(inputs=drop2, units=200,
+                                  kernel_initializer=tf.glorot_uniform_initializer(),
+                                  bias_initializer=tf.constant_initializer(0.1),
+                                  # kernel_regularizer=tf.nn.l2_loss,
+                                  name='extractor/fc', reuse=tf.AUTO_REUSE)
+        return logit
 
     def model(self):
         self.train_mode = tf.placeholder(tf.bool)
@@ -232,6 +245,8 @@ class ResNetFineTuneModel:
 
         if self.mode == 'fine_tune':
             params = tf.trainable_variables()
+        elif self.mode == 'origin':
+            params = tf.trainable_variables()
         else:
             params = [param for param in tf.trainable_variables() if 'resnet' not in param.name]
         gradients = tf.gradients(self.loss, params)
@@ -260,6 +275,9 @@ class ResNetFineTuneModel:
                         and 'global_step' not in var.name]
             restore = tf.train.Saver(var_list)
             restore.restore(self.sess, sys.argv[2])
+        elif self.mode == 'origin':
+            init_fn = slim.assign_from_checkpoint_fn('resnet_v1_50.ckpt', slim.get_model_variables('resnet_v1_50'))
+            init_fn(self.sess)
         elif self.mode == 'init':
             init_fn = slim.assign_from_checkpoint_fn('resnet_v1_50.ckpt', slim.get_model_variables('resnet_v1_50'))
             init_fn(self.sess)
@@ -272,12 +290,9 @@ class ResNetFineTuneModel:
         test_writer = tf.summary.FileWriter('log/resnet_fine_tune/' + self.mode + '_' + str(self.learning_rate) + '_' + cur_time + '/board/test', sess.graph)
         valid_writer = tf.summary.FileWriter('log/resnet_fine_tune/' + self.mode + '_' + str(self.learning_rate) + '_' + cur_time + '/board/valid', sess.graph)
 
-        logging.info(self.mode)
-        logging.info(str(self.learning_rate))
-        logging.info(cur_time)
-        logging.info(self.train_method)
-        logging.info(self.parse_mode)
-        logging.info('{} {} {} {} {}'.format(self.drop1, self.drop2, self.internal, self.resize_side_min, self.resize_side_max))
+        logging.info('{} {}'.format(self.mode, cur_time))
+        logging.info('{} {} {} {}'.format(self.train_method, self.decay, self.parse_mode, self.struct))
+        logging.info('{} {} {} {} {} {}'.format(self.drop1, self.drop2, self.drop3, self.internal, self.resize_side_min, self.resize_side_max))
 
         for epoch in range(self.train_epoch):
             losses, accs = [], []
@@ -317,14 +332,14 @@ class ResNetFineTuneModel:
                 logging.info('Epoch {} Test: loss = {:3.4f}\t acc = {:3.4f} \t'.
                              format(epoch, np.mean(losses), np.mean(accs)))
 
-                self.sess.run(self.test_multi_init_op)
-                multi_accs = []
-                for test_step in range(self.test_step_per_epoch):
-                    multi_acc = self.sess.run(self.multi_accuracy, feed_dict={self.train_mode: False})
-                    multi_accs.append(multi_acc)
-
-                logging.info('Epoch {} Test: loss = {:3.4f}\t accuracy = {:3.4f} \t multi accuracy = {:3.4f}'.
-                             format(epoch, np.mean(losses), np.mean(accs), np.mean(multi_accs)))
+                # self.sess.run(self.test_multi_init_op)
+                # multi_accs = []
+                # for test_step in range(self.test_step_per_epoch):
+                #     multi_acc = self.sess.run(self.multi_accuracy, feed_dict={self.train_mode: False})
+                #     multi_accs.append(multi_acc)
+                #
+                # logging.info('Epoch {} Test: loss = {:3.4f}\t accuracy = {:3.4f} \t multi accuracy = {:3.4f}'.
+                #              format(epoch, np.mean(losses), np.mean(accs), np.mean(multi_accs)))
 
                 saver.save(self.sess, 'log/resnet_fine_tune/' + self.mode + '_' + str(self.learning_rate) + '_' +
                     cur_time + '/tmp/model.ckpt', global_step=epoch)
