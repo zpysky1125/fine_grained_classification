@@ -317,13 +317,28 @@ class RecurrentAttentionModel(object):
         y_right = tf.clip_by_value(y_axis + normalize_scale, 0.0, 1.0)
         return tf.reshape(tf.stack([y_left, x_left, y_right, x_right], axis=-1), [-1, 4])
 
-    def glimpse_extractor(self, img, loc, scale):
-        if self.round == '34' or self.round == '35' or self.round == '36':
-            crop_box = self.generate_crop_box(loc, scale)
-            pth = tf.image.crop_and_resize(img, crop_box, tf.range(tf.shape(img)[0]), [self.resize_image_size, self.resize_image_size])
-        else:
+    def glimpse_extractor_1(self, img, argmax_loc, loc, scale):
+        if self.round == '31' or self.round == '32':
+            pth = tf.image.extract_glimpse(img, [self.pth_size, self.pth_size], argmax_loc)
+            pth = tf.image.resize_images(pth, [self.resize_image_size, self.resize_image_size])
+        elif self.round == '33':
             pth = tf.image.extract_glimpse(img, [self.pth_size, self.pth_size], loc)
             pth = tf.image.resize_images(pth, [self.resize_image_size, self.resize_image_size])
+        else:
+            crop_box = self.generate_crop_box(loc, scale)
+            pth = tf.image.crop_and_resize(img, crop_box, tf.range(tf.shape(img)[0]), [self.resize_image_size, self.resize_image_size])
+        return pth
+
+    def glimpse_extractor_2(self, img, argmax_loc, loc, scale):
+        if self.round == '41' or self.round == '42':
+            pth = tf.image.extract_glimpse(img, [self.pth_size, self.pth_size], argmax_loc)
+            pth = tf.image.resize_images(pth, [self.resize_image_size, self.resize_image_size])
+        elif self.round == '43':
+            pth = tf.image.extract_glimpse(img, [self.pth_size, self.pth_size], loc)
+            pth = tf.image.resize_images(pth, [self.resize_image_size, self.resize_image_size])
+        else:
+            crop_box = self.generate_crop_box(loc, scale)
+            pth = tf.image.crop_and_resize(img, crop_box, tf.range(tf.shape(img)[0]), [self.resize_image_size, self.resize_image_size])
         return pth
 
     def model(self):
@@ -342,8 +357,6 @@ class RecurrentAttentionModel(object):
         resnet_feature_1, fc_1, logit_1, loc_mean_1, loc_mean_2, scale_1, scale_2 = self.feature_extractor_1(self.images, self.train_mode)
         self.loc_1, self.loc_mean_1, self.log_loc_prob_1 = self.location_network(loc_mean_1, self.variance, self.train_mode)
         self.scale_1, self.scale_mean_1, self.log_scale_prob_1 = self.scale_network(scale_1, self.variance, self.train_mode)
-        self.loc_2, self.loc_mean_2, self.log_loc_prob_2 = self.location_network(loc_mean_2, self.variance, self.train_mode)
-        self.scale_1, self.scale_mean_1, self.log_scale_prob_1 = self.scale_network(scale_2, self.variance, self.train_mode)
 
         self.prob1 = tf.nn.softmax(logit_1)
         acc1 = tf.cast(tf.equal(tf.argmax(self.prob1, axis=-1, output_type=tf.int32), self.labels), tf.float32)
@@ -357,10 +370,7 @@ class RecurrentAttentionModel(object):
         argmax_x_1 = argmax_x_1 * 2.0 - 1.0 + 1 / width
         argmax_y_1 = argmax_y_1 * 2.0 - 1.0 + 1 / height
         argmax_loc = tf.cast(tf.stack([argmax_x_1, argmax_y_1], axis=1), tf.float32)
-        if self.round == '21' or self.round == '22' or self.round == '31' or self.round == '32':
-            self.glimpse_1 = self.glimpse_extractor(self.images, argmax_loc, self.scale_1)
-        else:
-            self.glimpse_1 = self.glimpse_extractor(self.images, self.loc_1, self.scale_1)
+        self.glimpse_1 = self.glimpse_extractor_1(self.images, argmax_loc, self.loc_1, self.scale_1)
 
         ___, logit_2, _, __ = self.feature_extractor_2(self.glimpse_1, self.train_mode)
         self.prob2 = tf.nn.softmax(logit_2)
@@ -378,11 +388,7 @@ class RecurrentAttentionModel(object):
 
         self.loc_2, self.loc_mean_2, self.log_loc_prob_2 = self.location_network(loc_mean_2, self.variance, self.train_mode)
         self.scale_2, self.scale_mean_2, self.log_scale_prob_2 = self.scale_network(scale_2, self.variance, self.train_mode)
-
-        if self.round == '41' or self.round == '42':
-            self.glimpse_2 = self.glimpse_extractor(self.images, argmax_loc, self.scale_2)
-        else:
-            self.glimpse_2 = self.glimpse_extractor(self.images, self.loc_2, self.scale_2)
+        self.glimpse_2 = self.glimpse_extractor_2(self.images, argmax_loc, self.loc_2, self.scale_2)
 
         logit_3 = self.feature_extractor_3(self.glimpse_2, self.train_mode)
         self.prob3 = tf.nn.softmax(logit_3)
@@ -567,10 +573,9 @@ class RecurrentAttentionModel(object):
             restore = tf.train.Saver(var_list)
             restore.restore(self.sess, 'extractor_3/model.ckpt')
             var_list = [var for var in tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES) if self.train_method not in var.name
-                        and 'global_step' not in var.name and 'power' not in var.name and 'loc_2' not in var.name
-                        and 'scale_2' not in var.name and 'extractor_3' not in var.name]
-            restore = tf.train.Saver(var_list)
-            restore.restore(self.sess, sys.argv[2])
+                        and 'global_step' not in var.name and 'power' not in var.name and 'extractor_3' not in var.name]
+            restore2 = tf.train.Saver(var_list)
+            restore2.restore(self.sess, sys.argv[2])
         else:
             var_list = [var for var in tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES) if self.train_method not in var.name
                         and 'global_step' not in var.name and 'power' not in var.name]
