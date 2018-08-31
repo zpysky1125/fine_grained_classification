@@ -6,7 +6,7 @@ import tensorflow as tf
 import numpy as np
 import logging
 import os
-# os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 import time
 import sys
 import config
@@ -18,7 +18,7 @@ from PIL import Image
 
 class RecurrentAttentionModel(object):
     def __init__(self, sess=None, batch_size=64, multi_batch_size=16, pth_size=64, variance=0.22, drop1=0.3, drop2=0.3,
-                 internal1=512, internal2=512, internal3=512, decay=0.99, mode='new',
+                 internal1=512, internal2=512, internal3=512, decay=0.99, mode='new', l2_rate=0.1,
                  train_method='Adam', reinforce_mode='baseline', learning_rate=5e-4, min_learning_rate=1e-5,
                  resize_side_min=224, resize_side_max=512, origin_image_size=224, resize_image_size=224,
                  train_path='', valid_path='', test_path='', logging_step=50, train_epoch=20, test_period=5):
@@ -70,6 +70,8 @@ class RecurrentAttentionModel(object):
 
         self.round = sys.argv[1]
         self.mode = mode
+
+        self.l2_rate = l2_rate
 
         self.train_method = train_method
         self.pth_mode = 'fix'
@@ -370,7 +372,11 @@ class RecurrentAttentionModel(object):
         argmax_x_1 = argmax_x_1 * 2.0 - 1.0 + 1 / width
         argmax_y_1 = argmax_y_1 * 2.0 - 1.0 + 1 / height
         argmax_loc = tf.cast(tf.stack([argmax_x_1, argmax_y_1], axis=1), tf.float32)
-        self.glimpse_1 = self.glimpse_extractor_1(self.images, argmax_loc, self.loc_1, self.scale_1)
+
+        if self.round[0] == '4':
+            self.glimpse_1 = self.glimpse_extractor_1(self.images, argmax_loc, self.loc_mean_1, self.scale_mean_1)
+        else:
+            self.glimpse_1 = self.glimpse_extractor_1(self.images, argmax_loc, self.loc_1, self.scale_1)
 
         ___, logit_2, _, __ = self.feature_extractor_2(self.glimpse_1, self.train_mode)
         self.prob2 = tf.nn.softmax(logit_2)
@@ -396,8 +402,22 @@ class RecurrentAttentionModel(object):
         self.cls_loss_3 = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logit_3, labels=self.labels))
         self.loc_loss_3 = -tf.reduce_mean(self.log_loc_prob_2 * tf.stop_gradient(acc3))
         self.scale_loss_3 = -tf.reduce_mean(self.log_scale_prob_2 * tf.stop_gradient(acc3))
-        self.loc_loss_23 = -1.0 * tf.reduce_mean(tf.square(self.loc_mean_1 - self.loc_mean_2))
+        self.loc_loss_23 = - float(self.l2_rate) * tf.reduce_mean(tf.square(self.loc_mean_1 - self.loc_mean_2))
         self.acc_3 = tf.reduce_mean(acc3)
+
+        self.acc_23_1 = tf.reduce_mean(tf.cast(tf.equal(tf.argmax(self.prob2 + 0.1 * self.prob3, axis=-1, output_type=tf.int32), self.labels), tf.float32))
+        self.acc_23_2 = tf.reduce_mean(tf.cast(tf.equal(tf.argmax(self.prob2 + 0.3 * self.prob3, axis=-1, output_type=tf.int32), self.labels), tf.float32))
+        self.acc_23_3 = tf.reduce_mean(tf.cast(tf.equal(tf.argmax(self.prob2 + 0.5 * self.prob3, axis=-1, output_type=tf.int32), self.labels), tf.float32))
+        self.acc_23_4 = tf.reduce_mean(tf.cast(tf.equal(tf.argmax(self.prob2 + 0.7 * self.prob3, axis=-1, output_type=tf.int32), self.labels), tf.float32))
+        self.acc_23_5 = tf.reduce_mean(tf.cast(tf.equal(tf.argmax(self.prob2 + self.prob3, axis=-1, output_type=tf.int32), self.labels), tf.float32))
+
+        self.acc_123_1 = tf.reduce_mean(tf.cast(tf.equal(tf.argmax(self.prob1 + 0.7 * self.prob2 + 0.7 * self.prob3, axis=-1, output_type=tf.int32), self.labels), tf.float32))
+        self.acc_123_2 = tf.reduce_mean(tf.cast(tf.equal(tf.argmax(self.prob1 + 0.5 * self.prob2 + 0.5 * self.prob3, axis=-1, output_type=tf.int32), self.labels), tf.float32))
+        self.acc_123_3 = tf.reduce_mean(tf.cast(tf.equal(tf.argmax(self.prob1 + 1.0 * self.prob2 + 1.0 * self.prob3, axis=-1, output_type=tf.int32), self.labels), tf.float32))
+        self.acc_123_4 = tf.reduce_mean(tf.cast(tf.equal(tf.argmax(self.prob1 + 0.5 * self.prob2 + self.prob3, axis=-1, output_type=tf.int32), self.labels), tf.float32))
+        self.acc_123_5 = tf.reduce_mean(tf.cast(tf.equal(tf.argmax(0.5 * self.prob1 + self.prob2 + self.prob3, axis=-1, output_type=tf.int32), self.labels), tf.float32))
+        self.acc_123_6 = tf.reduce_mean(tf.cast(tf.equal(tf.argmax(self.prob1 + self.prob2 + 0.5 * self.prob3, axis=-1, output_type=tf.int32), self.labels), tf.float32))
+        self.acc_123_7 = tf.reduce_mean(tf.cast(tf.equal(tf.argmax(self.prob1 + 0.7 * self.prob2 + 0.5 * self.prob3, axis=-1, output_type=tf.int32), self.labels), tf.float32))
 
         # self.glimpse_2 = self.glimpse_extractor(self.glimpse_1, self.loc_1, scale_1)
         # logit_3 = self.feature_extractor_3(self.glimpse_2, self.train_mode)
@@ -505,16 +525,20 @@ class RecurrentAttentionModel(object):
             tf.summary.scalar('acc_3', self.acc_3)
         elif self.round == '43':
             self.loss = self.loc_loss_3 + self.loc_loss_23
-            self.acc = [self.acc_1, self.acc_2, self.acc_3]
+            self.acc = [self.acc_1, self.acc_2, self.acc_3, self.acc_12_4, self.acc_12_5,
+                        self.acc_23_2, self.acc_23_3, self.acc_23_4]
             params = [var for var in tf.trainable_variables() if 'extractor_1/loc_2' in var.name]
             tf.summary.scalar('loc_loss_3', self.loc_loss_3)
             tf.summary.scalar('cls_loss_3', self.cls_loss_3)
             tf.summary.scalar('acc_3', self.acc_3)
             tf.summary.histogram('loc_mean_1', self.loc_mean_1)
             tf.summary.histogram('loc_mean_2', self.loc_mean_2)
+            tf.summary.histogram('loc_mean_diff', self.loc_mean_1 - self.loc_mean_2)
         elif self.round == '44':
             self.loss = self.scale_loss_3
-            self.acc = [self.acc_1, self.acc_2, self.acc_3]
+            self.acc = [self.acc_1, self.acc_2, self.acc_3, self.acc_12_4, self.acc_12_5, self.acc_23_4, self.acc_23_5,
+                        self.acc_123_1, self.acc_123_2, self.acc_123_3, self.acc_123_4, self.acc_123_5, self.acc_123_6,
+                        self.acc_123_7]
             params = [var for var in tf.trainable_variables() if 'extractor_1/scale_2' in var.name]
             tf.summary.scalar('scale_loss_2', self.scale_loss_3)
             tf.summary.scalar('cls_loss_3', self.cls_loss_3)
@@ -522,19 +546,24 @@ class RecurrentAttentionModel(object):
             tf.summary.histogram('scale_mean_2', self.scale_mean_2)
         elif self.round == '45':
             self.loss = self.cls_loss_3
-            self.acc = [self.acc_1, self.acc_2, self.acc_3]
-            params = [var for var in tf.trainable_variables() if 'extractor_2' in var.name]
+            self.acc = [self.acc_1, self.acc_2, self.acc_3, self.acc_12_4, self.acc_12_5, self.acc_23_4, self.acc_23_5,
+                        self.acc_123_1, self.acc_123_2, self.acc_123_3, self.acc_123_4, self.acc_123_5, self.acc_123_6,
+                        self.acc_123_7]
+            params = [var for var in tf.trainable_variables() if 'extractor_3' in var.name]
             tf.summary.scalar('cls_loss_3', self.cls_loss_3)
             tf.summary.scalar('acc_3', self.acc_3)
         elif self.round == '46':
             self.loss = self.loc_loss_3 + self.loc_loss_23
-            self.acc = [self.acc_1, self.acc_2, self.acc_3]
+            self.acc = [self.acc_1, self.acc_2, self.acc_3, self.acc_12_4, self.acc_12_5, self.acc_23_4, self.acc_23_5,
+                        self.acc_123_1, self.acc_123_2, self.acc_123_3, self.acc_123_4, self.acc_123_5, self.acc_123_6,
+                        self.acc_123_7]
             params = [var for var in tf.trainable_variables() if 'extractor_1/loc_2' in var.name]
             tf.summary.scalar('loc_loss_3', self.loc_loss_3)
             tf.summary.scalar('cls_loss_3', self.cls_loss_3)
             tf.summary.scalar('acc_3', self.acc_3)
             tf.summary.histogram('loc_mean_1', self.loc_mean_1)
             tf.summary.histogram('loc_mean_2', self.loc_mean_2)
+            tf.summary.histogram('loc_mean_diff', self.loc_mean_1 - self.loc_mean_2)
         else:
             sys.exit(1)
 
@@ -591,7 +620,7 @@ class RecurrentAttentionModel(object):
         logging.info(self.mode)
         logging.info('{} {} {}'.format(self.learning_rate, self.train_method, self.decay))
         logging.info(cur_time)
-        logging.info('{} {}'.format(self.pth_mode, self.reinforce_mode))
+        logging.info('{} {} {}'.format(self.pth_mode, self.reinforce_mode, self.l2_rate))
         logging.info('{} {} {} {} {} {} {} {} {} {}'.format(self.drop1, self.drop2, self.pth_size, self.internal1,
                                                       self.internal2, self.internal3, self.resize_side_min,
                                                       self.resize_side_max, self.origin_image_size, self.resize_image_size))
